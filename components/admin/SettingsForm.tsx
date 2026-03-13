@@ -4,9 +4,10 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-type Props = {
-  email: string;
-};
+type Props = { email: string };
+
+const inputCls = "w-full md-body-medium px-4 h-12 rounded-[var(--md-shape-s)] border outline-none transition-colors";
+const inputStyle = { background: 'var(--md-surface-container-lowest)', borderColor: 'var(--md-outline)', color: 'var(--md-on-surface)' };
 
 export default function SettingsForm({ email }: Props) {
   const supabase = createClient();
@@ -20,78 +21,84 @@ export default function SettingsForm({ email }: Props) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true);
-    setError('');
-    setSuccess('');
-
+    setSaving(true); setError(''); setSuccess('');
     const payload: { email?: string; password?: string } = {};
     if (newEmail.trim() && newEmail.trim() !== email) payload.email = newEmail.trim();
     if (newPassword.trim()) payload.password = newPassword.trim();
-
     if (!payload.email && !payload.password) {
-      setError('Enter a new email or password first.');
-      setSaving(false);
-      return;
+      setError('أدخل بريداً إلكترونياً أو كلمة مرور جديدة أولاً.');
+      setSaving(false); return;
     }
-
     const { error: updateError } = await supabase.auth.updateUser(payload);
-    if (updateError) {
-      setError(updateError.message);
-      setSaving(false);
-      return;
-    }
-
-    setSuccess('Settings updated successfully.');
-    setNewPassword('');
-    setSaving(false);
+    if (updateError) { setError(updateError.message); setSaving(false); return; }
+    setSuccess('تم تحديث الإعدادات بنجاح.'); setNewPassword(''); setSaving(false);
     router.refresh();
   }
 
   async function handleLogout() {
     setLoggingOut(true);
     await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
+    router.push('/login'); router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] p-6 shadow-sm">
-      <div>
-        <label htmlFor="admin-email" className="mb-2 block text-sm font-semibold text-[#38515a]">Change admin email</label>
+    <form onSubmit={handleSubmit} className="md-card-outlined p-6 space-y-5">
+      <div className="space-y-2">
+        <label htmlFor="admin-email" className="md-label-medium block" style={{ color: 'var(--md-on-surface-variant)' }}>
+          البريد الإلكتروني
+        </label>
         <input
           id="admin-email"
           type="email"
           value={newEmail}
-          onChange={(event) => setNewEmail(event.target.value)}
-          className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3"
+          onChange={(e) => setNewEmail(e.target.value)}
+          className={inputCls}
+          style={inputStyle}
+          onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+          onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
         />
       </div>
 
-      <div>
-        <label htmlFor="admin-password" className="mb-2 block text-sm font-semibold text-[#38515a]">Change admin password</label>
+      <div className="space-y-2">
+        <label htmlFor="admin-password" className="md-label-medium block" style={{ color: 'var(--md-on-surface-variant)' }}>
+          كلمة المرور الجديدة
+        </label>
         <input
           id="admin-password"
           type="password"
           value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3"
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="اترك فارغاً إن لم تُرد التغيير"
+          className={inputCls}
+          style={inputStyle}
+          onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+          onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
         />
       </div>
 
-      {error ? <p className="rounded-2xl bg-[#ffe2dd] px-4 py-3 text-sm font-semibold text-[#8a1f13]">{error}</p> : null}
-      {success ? <p className="rounded-2xl bg-[#dff3ea] px-4 py-3 text-sm font-semibold text-[#0f5a46]">{success}</p> : null}
+      {error && (
+        <p className="md-body-small px-4 py-3 rounded-[var(--md-shape-m)]" style={{ background: 'var(--md-error-container)', color: 'var(--md-on-error-container)' }}>
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="md-body-small px-4 py-3 rounded-[var(--md-shape-m)]" style={{ background: 'var(--md-primary-container)', color: 'var(--md-on-primary-container)' }}>
+          {success}
+        </p>
+      )}
 
-      <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={saving} className="rounded-2xl bg-[#123c3a] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
-          {saving ? 'Saving...' : 'Save'}
+      <div className="flex flex-wrap gap-3 pt-1">
+        <button type="submit" disabled={saving} className="md-btn md-btn-filled md-state disabled:opacity-50">
+          {saving ? 'جاري الحفظ...' : 'حفظ'}
         </button>
         <button
           type="button"
           onClick={() => void handleLogout()}
           disabled={loggingOut}
-          className="rounded-2xl bg-[#ece4d7] px-5 py-3 text-sm font-semibold text-[#38515a] disabled:opacity-60"
+          className="md-btn md-btn-outlined md-state disabled:opacity-50"
+          style={{ color: 'var(--md-error)', borderColor: 'var(--md-error)' }}
         >
-          {loggingOut ? 'Logging out...' : 'Logout'}
+          {loggingOut ? 'جاري الخروج...' : 'تسجيل الخروج'}
         </button>
       </div>
     </form>

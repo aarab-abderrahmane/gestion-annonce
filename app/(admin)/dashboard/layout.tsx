@@ -14,12 +14,17 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f1e8] text-[#1f2937]">
-      <div className="mx-auto flex max-w-[1600px]">
+    <div
+      className="min-h-screen"
+      style={{ background: 'var(--md-surface)', color: 'var(--md-on-surface)', fontFamily: 'var(--md-font-brand)' }}
+    >
+      <div className="flex max-w-[1600px] mx-auto">
         <Sidebar />
-        <div className="min-h-screen flex-1 p-6 md:p-8">
+        <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
           <AdminHeader email={user.email ?? ''} />
-          {children}
+          <main className="flex-1 p-4 md:p-6 space-y-6">
+            {children}
+          </main>
         </div>
       </div>
     </div>

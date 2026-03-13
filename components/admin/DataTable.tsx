@@ -23,32 +23,58 @@ export default function DataTable<T extends { id: string }>({
   actionLabel?: string;
 }) {
   return (
-    <section className="rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] shadow-sm">
-      <div className="flex items-center justify-between border-b border-[#ece4d7] px-6 py-5">
-        <h2 className="text-xl font-bold text-[#123c3a]">{title}</h2>
+    <section className="md-card-outlined overflow-hidden">
+      {/* Card header */}
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: '1px solid var(--md-outline-variant)' }}
+      >
+        <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
+          {title}
+        </h2>
         {actionHref && actionLabel ? (
-          <Link href={actionHref} className="rounded-2xl bg-[#123c3a] px-4 py-2 text-sm font-semibold text-white">
+          <Link href={actionHref} className="md-btn md-btn-tonal md-state" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>
             {actionLabel}
           </Link>
         ) : null}
       </div>
+
+      {/* Body */}
       {rows.length === 0 ? (
-        <div className="px-6 py-12 text-sm text-[#6d7f82]">{emptyMessage}</div>
+        <div className="px-6 py-12 text-center md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
+          {emptyMessage}
+        </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-right">
+          <table className="min-w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
-              <tr className="text-xs uppercase tracking-[0.2em] text-[#9a7b4f]">
+              <tr style={{ background: 'var(--md-surface-container)' }}>
                 {columns.map((column) => (
-                  <th key={column.key} className="px-6 py-4 font-semibold">{column.header}</th>
+                  <th
+                    key={column.key}
+                    className="md-label-medium text-right px-6 py-3"
+                    style={{ color: 'var(--md-on-surface-variant)' }}
+                  >
+                    {column.header}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t border-[#ece4d7] text-sm text-[#38515a]">
+                <tr
+                  key={row.id}
+                  className="transition-colors hover:bg-[var(--md-surface-container-low)]"
+                  style={{ borderTop: '1px solid var(--md-outline-variant)' }}
+                >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 align-top">{column.render(row)}</td>
+                    <td
+                      key={column.key}
+                      className="md-body-medium px-6 py-4 align-top"
+                      style={{ color: 'var(--md-on-surface)' }}
+                    >
+                      {column.render(row)}
+                    </td>
                   ))}
                 </tr>
               ))}

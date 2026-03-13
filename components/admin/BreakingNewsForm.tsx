@@ -13,23 +13,26 @@ type FormValues = {
   expires_at: string;
 };
 
-type BreakingNewsFormProps = {
-  mode: 'create' | 'edit';
-  initialValues: FormValues;
-  id?: string;
-};
+type BreakingNewsFormProps = { mode: 'create' | 'edit'; initialValues: FormValues; id?: string };
 
 function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+  return value.trim().toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <label className="md-label-medium block" style={{ color: 'var(--md-on-surface-variant)' }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = "w-full md-body-medium px-4 h-12 rounded-[var(--md-shape-s)] border outline-none transition-colors";
+const inputStyle = { background: 'var(--md-surface-container-lowest)', borderColor: 'var(--md-outline)', color: 'var(--md-on-surface)' };
 
 export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNewsFormProps) {
   const router = useRouter();
@@ -40,27 +43,24 @@ export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNe
 
   useEffect(() => {
     if (mode === 'create') {
-      setValues((current) => ({
-        ...current,
-        slug: slugify(current.title),
-      }));
+      setValues((curr) => ({ ...curr, slug: slugify(curr.title) }));
     }
   }, [mode, values.title]);
+
+  function setField<K extends keyof FormValues>(key: K, val: FormValues[K]) {
+    setValues((curr) => ({ ...curr, [key]: val }));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
-
     const trimmedTitle = values.title.trim();
     const generatedSlug = slugify(trimmedTitle);
-
     if (!trimmedTitle || !generatedSlug || !values.level || !values.status || !values.expires_at) {
-      setError('Tous les champs sont obligatoires.');
+      setError('جميع الحقول مطلوبة.');
       return;
     }
-
     setSaving(true);
-
     const payload = {
       title: trimmedTitle,
       slug: mode === 'create' ? generatedSlug : values.slug,
@@ -68,106 +68,112 @@ export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNe
       status: values.status,
       expires_at: new Date(values.expires_at).toISOString(),
     };
-
     const query = mode === 'create'
       ? supabase.from('breaking_news').insert(payload)
       : supabase.from('breaking_news').update(payload).eq('id', id);
-
     const { error: queryError } = await query;
-
-    if (queryError) {
-      setError(queryError.message);
-      setSaving(false);
-      return;
-    }
-
+    if (queryError) { setError(queryError.message); setSaving(false); return; }
     router.push('/dashboard/breaking-news');
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="md-card-outlined p-6 space-y-5">
       <div className="grid gap-5 md:grid-cols-2">
+        {/* Title */}
         <div className="md:col-span-2">
-          <label htmlFor="title" className="mb-2 block text-sm font-semibold text-[#38515a]">
-            Title
-          </label>
-          <input
-            id="title"
-            value={values.title}
-            onChange={(event) => setValues({ ...values, title: event.target.value })}
-            placeholder="أدخل عنوان الخبر"
-            className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3 outline-none transition focus:border-[#123c3a]"
-            required
-          />
+          <Field label="العنوان">
+            <input
+              id="title"
+              value={values.title}
+              onChange={(e) => setField('title', e.target.value)}
+              placeholder="أدخل عنوان الخبر"
+              className={inputCls}
+              style={inputStyle}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
+              required
+            />
+          </Field>
         </div>
 
-        <div>
-          <label htmlFor="level" className="mb-2 block text-sm font-semibold text-[#38515a]">
-            Level
-          </label>
+        {/* Level */}
+        <Field label="المستوى">
           <select
             id="level"
             value={values.level}
-            onChange={(event) => setValues({ ...values, level: event.target.value as FormValues['level'] })}
-            className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3 outline-none transition focus:border-[#123c3a]"
+            onChange={(e) => setField('level', e.target.value as FormValues['level'])}
+            className={inputCls}
+            style={inputStyle}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+            onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
           >
-            <option value="dangerous">🔴 Dangerous</option>
-            <option value="urgent">🟠 Urgent</option>
-            <option value="warning">🟡 Warning</option>
+            <option value="dangerous">🔴 خطير</option>
+            <option value="urgent">🟠 عاجل</option>
+            <option value="warning">🟡 تحذير</option>
           </select>
-        </div>
+        </Field>
 
-        <div>
-          <label htmlFor="status" className="mb-2 block text-sm font-semibold text-[#38515a]">
-            Status
-          </label>
+        {/* Status */}
+        <Field label="الحالة">
           <select
             id="status"
             value={values.status}
-            onChange={(event) => setValues({ ...values, status: event.target.value as FormValues['status'] })}
-            className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3 outline-none transition focus:border-[#123c3a]"
+            onChange={(e) => setField('status', e.target.value as FormValues['status'])}
+            className={inputCls}
+            style={inputStyle}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+            onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
           >
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            <option value="draft">مسودة</option>
+            <option value="published">منشور</option>
           </select>
-        </div>
+        </Field>
 
+        {/* Expires at */}
         <div className="md:col-span-2">
-          <label htmlFor="expires_at" className="mb-2 block text-sm font-semibold text-[#38515a]">
-            Expires at
-          </label>
-          <input
-            id="expires_at"
-            type="datetime-local"
-            value={values.expires_at}
-            onChange={(event) => setValues({ ...values, expires_at: event.target.value })}
-            className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3 outline-none transition focus:border-[#123c3a]"
-            required
-          />
+          <Field label="تاريخ الانتهاء">
+            <input
+              id="expires_at"
+              type="datetime-local"
+              value={values.expires_at}
+              onChange={(e) => setField('expires_at', e.target.value)}
+              className={inputCls}
+              style={inputStyle}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
+              required
+            />
+          </Field>
         </div>
 
-        <div className="md:col-span-2 rounded-2xl border border-dashed border-[#d9cdbb] bg-[#faf5eb] px-4 py-3 text-sm text-[#6d7f82]">
-          <span className="font-semibold text-[#38515a]">Slug:</span>{' '}
-          {mode === 'create' ? values.slug || 'Will be generated automatically from the title' : values.slug}
+        {/* Slug preview */}
+        <div
+          className="md:col-span-2 px-4 py-3 rounded-[var(--md-shape-m)] md-body-small"
+          style={{ background: 'var(--md-surface-container)', color: 'var(--md-on-surface-variant)' }}
+        >
+          <span className="font-semibold" style={{ color: 'var(--md-on-surface)' }}>Slug: </span>
+          {mode === 'create' ? values.slug || 'سيتم توليده تلقائياً من العنوان' : values.slug}
         </div>
       </div>
 
-      {error ? <p className="rounded-2xl bg-[#ffe2dd] px-4 py-3 text-sm font-semibold text-[#8a1f13]">{error}</p> : null}
+      {/* Error */}
+      {error && (
+        <p
+          className="md-body-small px-4 py-3 rounded-[var(--md-shape-m)]"
+          style={{ background: 'var(--md-error-container)', color: 'var(--md-on-error-container)' }}
+        >
+          {error}
+        </p>
+      )}
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-2xl bg-[#123c3a] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {saving ? 'Saving...' : 'Save'}
+      {/* Actions */}
+      <div className="flex flex-wrap gap-3 pt-2">
+        <button type="submit" disabled={saving} className="md-btn md-btn-filled md-state disabled:opacity-50">
+          {saving ? 'جاري الحفظ...' : 'حفظ'}
         </button>
-        <Link
-          href="/dashboard/breaking-news"
-          className="rounded-2xl bg-[#ece4d7] px-5 py-3 text-sm font-semibold text-[#38515a]"
-        >
-          Cancel
+        <Link href="/dashboard/breaking-news" className="md-btn md-btn-outlined md-state">
+          إلغاء
         </Link>
       </div>
     </form>

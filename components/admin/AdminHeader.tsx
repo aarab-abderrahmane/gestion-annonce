@@ -2,30 +2,69 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { LogOut } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 
 const titleMap: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/dashboard/breaking-news': 'Breaking News',
-  '/dashboard/announcements': 'Announcements',
-  '/dashboard/events': 'Events',
-  '/dashboard/categories': 'Categories',
-  '/dashboard/settings': 'Settings',
+  '/dashboard': 'لوحة التحكم',
+  '/dashboard/breaking-news': 'أخبار عاجلة',
+  '/dashboard/announcements': 'الإعلانات',
+  '/dashboard/events': 'الفعاليات',
+  '/dashboard/categories': 'الأصناف',
+  '/dashboard/settings': 'الإعدادات',
 };
 
 export default function AdminHeader({ email }: { email: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const title = Object.entries(titleMap).find(([key]) => pathname === key || pathname.startsWith(`${key}/`))?.[1] ?? 'Dashboard';
+  const title =
+    Object.entries(titleMap).find(
+      ([key]) => pathname === key || pathname.startsWith(`${key}/`)
+    )?.[1] ?? 'لوحة التحكم';
+
+  const initials = email?.slice(0, 2).toUpperCase() ?? 'A';
 
   return (
-    <header className="mb-8 flex flex-col gap-4 rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] px-6 py-5 shadow-sm md:flex-row md:items-center md:justify-between">
-      <div>
-        <p className="text-xs uppercase tracking-[0.3em] text-[#9a7b4f]">Admin Panel</p>
-        <h1 className="text-3xl font-black text-[#123c3a]">{title}</h1>
+    <header
+      className="flex items-center justify-between px-4 py-3 mb-6"
+      style={{
+        background: 'var(--md-surface-container-low)',
+        borderBottom: '1px solid var(--md-outline-variant)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+      }}
+    >
+      {/* Leading – page title */}
+      <div className="flex items-center gap-2">
+        {/* Mobile hamburger (purely decorative placeholder; sidebar is mobile-hidden) */}
+        <button className="md-icon-btn lg:hidden">
+          <Menu size={24} />
+        </button>
+        <h1 className="md-title-large" style={{ color: 'var(--md-on-surface)' }}>
+          {title}
+        </h1>
       </div>
-      <div className="flex items-center gap-3">
-        <div className="rounded-2xl bg-[#f5f1e8] px-4 py-2 text-sm text-[#38515a]">{email}</div>
+
+      {/* Trailing actions */}
+      <div className="flex items-center gap-2">
+        {/* Email chip */}
+        <div
+          className="hidden sm:flex items-center gap-2 px-3 h-8 rounded-[var(--md-shape-s)] md-label-medium"
+          style={{
+            background: 'var(--md-surface-container)',
+            color: 'var(--md-on-surface-variant)',
+          }}
+        >
+          <span
+            className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
+            style={{ background: 'var(--md-primary)', color: 'var(--md-on-primary)' }}
+          >
+            {initials}
+          </span>
+          <span className="max-w-[160px] truncate">{email}</span>
+        </div>
+
+        {/* Logout icon-button */}
         <button
           onClick={async () => {
             const supabase = createClient();
@@ -33,10 +72,10 @@ export default function AdminHeader({ email }: { email: string }) {
             router.push('/login');
             router.refresh();
           }}
-          className="inline-flex items-center gap-2 rounded-2xl bg-[#123c3a] px-4 py-2 text-sm font-semibold text-white"
+          className="md-icon-btn md-icon-btn-tonal"
+          title="تسجيل الخروج"
         >
-          <LogOut size={16} />
-          Logout
+          <LogOut size={18} />
         </button>
       </div>
     </header>

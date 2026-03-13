@@ -17,47 +17,122 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <StatsCard label="Total breaking news" value={breakingCount.count ?? 0} accent="#f3b95f" icon={<BellRing size={18} />} />
-        <StatsCard label="Total announcements" value={announcementsCount.count ?? 0} accent="#d5eadf" icon={<Newspaper size={18} />} />
-        <StatsCard label="Total events" value={eventsCount.count ?? 0} accent="#dbe8ff" icon={<CalendarDays size={18} />} />
-        <StatsCard label="Total divisions" value={divisionsCount.count ?? 0} accent="#f7dfd7" icon={<Building2 size={18} />} />
+    <div className="space-y-6">
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatsCard
+          label="إجمالي الأخبار العاجلة"
+          value={breakingCount.count ?? 0}
+          accent="var(--md-error-container)"
+          icon={<BellRing size={22} style={{ color: 'var(--md-on-error-container)' }} />}
+        />
+        <StatsCard
+          label="إجمالي الإعلانات"
+          value={announcementsCount.count ?? 0}
+          accent="var(--md-primary-container)"
+          icon={<Newspaper size={22} style={{ color: 'var(--md-on-primary-container)' }} />}
+        />
+        <StatsCard
+          label="إجمالي الفعاليات"
+          value={eventsCount.count ?? 0}
+          accent="var(--md-tertiary-container)"
+          icon={<CalendarDays size={22} style={{ color: 'var(--md-on-tertiary-container)' }} />}
+        />
+        <StatsCard
+          label="إجمالي الأقسام"
+          value={divisionsCount.count ?? 0}
+          accent="var(--md-secondary-container)"
+          icon={<Building2 size={22} style={{ color: 'var(--md-on-secondary-container)' }} />}
+        />
       </div>
 
+      {/* Recent items tables */}
       <div className="grid gap-6 xl:grid-cols-2">
         <DataTable
-          title="Recent announcements"
+          title="آخر الإعلانات"
           rows={announcementsRes.data ?? []}
-          emptyMessage="No announcements yet."
+          emptyMessage="لا توجد إعلانات بعد."
           actionHref="/dashboard/announcements"
-          actionLabel="Open section"
+          actionLabel="عرض الكل"
           columns={[
-            { key: 'title', header: 'Title', render: (row) => <span className="font-semibold text-[#123c3a]">{row.title}</span> },
-            { key: 'status', header: 'Status', render: (row) => row.status },
-            { key: 'published_at', header: 'Published', render: (row) => row.published_at ? new Date(row.published_at).toLocaleDateString('fr-FR') : '-' },
+            {
+              key: 'title',
+              header: 'العنوان',
+              render: (row) => (
+                <span className="md-body-medium font-semibold" style={{ color: 'var(--md-on-surface)' }}>
+                  {row.title}
+                </span>
+              ),
+            },
+            {
+              key: 'status',
+              header: 'الحالة',
+              render: (row) => (
+                <span
+                  className="md-label-small px-3 py-1 rounded-[var(--md-shape-full)]"
+                  style={{
+                    background: row.status === 'published' ? 'var(--md-primary-container)' : 'var(--md-surface-container-highest)',
+                    color: row.status === 'published' ? 'var(--md-on-primary-container)' : 'var(--md-on-surface-variant)',
+                  }}
+                >
+                  {row.status === 'published' ? 'منشور' : 'مسودة'}
+                </span>
+              ),
+            },
+            {
+              key: 'published_at',
+              header: 'تاريخ النشر',
+              render: (row) =>
+                row.published_at ? new Date(row.published_at).toLocaleDateString('ar-MA') : '—',
+            },
           ]}
         />
         <DataTable
-          title="Recent events"
+          title="آخر الفعاليات"
           rows={eventsRes.data ?? []}
-          emptyMessage="No events yet."
-          actionHref="/dashboard/breaking-news"
-          actionLabel="Quick links"
+          emptyMessage="لا توجد فعاليات بعد."
+          actionHref="/dashboard/events"
+          actionLabel="عرض الكل"
           columns={[
-            { key: 'title', header: 'Title', render: (row) => <span className="font-semibold text-[#123c3a]">{row.title}</span> },
-            { key: 'location', header: 'Location', render: (row) => row.location || '-' },
-            { key: 'starts_at', header: 'Starts', render: (row) => row.starts_at ? new Date(row.starts_at).toLocaleDateString('fr-FR') : '-' },
+            {
+              key: 'title',
+              header: 'العنوان',
+              render: (row) => (
+                <span className="md-body-medium font-semibold" style={{ color: 'var(--md-on-surface)' }}>
+                  {row.title}
+                </span>
+              ),
+            },
+            {
+              key: 'location',
+              header: 'الموقع',
+              render: (row) => row.location || '—',
+            },
+            {
+              key: 'starts_at',
+              header: 'تاريخ البدء',
+              render: (row) =>
+                row.starts_at ? new Date(row.starts_at).toLocaleDateString('ar-MA') : '—',
+            },
           ]}
         />
       </div>
 
-      <section className="rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] p-6 shadow-sm">
-        <h2 className="mb-4 text-xl font-bold text-[#123c3a]">Quick links</h2>
+      {/* Quick links */}
+      <section className="md-card-outlined p-6">
+        <h2 className="md-title-medium mb-4" style={{ color: 'var(--md-on-surface)' }}>
+          روابط سريعة
+        </h2>
         <div className="flex flex-wrap gap-3">
-          <Link href="/dashboard/breaking-news" className="rounded-2xl bg-[#123c3a] px-4 py-3 text-sm font-semibold text-white">Manage breaking news</Link>
-          <Link href="/dashboard/announcements" className="rounded-2xl bg-[#ece4d7] px-4 py-3 text-sm font-semibold text-[#38515a]">Announcements</Link>
-          <Link href="/dashboard/settings" className="rounded-2xl bg-[#ece4d7] px-4 py-3 text-sm font-semibold text-[#38515a]">Settings</Link>
+          <Link href="/dashboard/breaking-news" className="md-btn md-btn-filled md-state">
+            إدارة الأخبار العاجلة
+          </Link>
+          <Link href="/dashboard/announcements" className="md-btn md-btn-tonal md-state">
+            الإعلانات
+          </Link>
+          <Link href="/dashboard/settings" className="md-btn md-btn-outlined md-state">
+            الإعدادات
+          </Link>
         </div>
       </section>
     </div>
