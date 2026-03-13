@@ -7,6 +7,7 @@ import {
   Calendar as CalendarIcon,
   MapPin,
   Users,
+  UserRound,
   CheckCircle2,
   Download,
   Share2,
@@ -119,6 +120,25 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
                   <MapPin size={16} /> {event.location}
                 </span>
               </div>
+              <div className="flex flex-wrap gap-3 mt-4">
+                {event.categories?.map((category) => (
+                  <span
+                    key={category}
+                    className="md-label-medium px-3 py-1.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.12)', color: 'white', border: '1px solid rgba(255,255,255,0.24)' }}
+                  >
+                    {category}
+                  </span>
+                ))}
+                {typeof event.attendeeCount === 'number' && (
+                  <span
+                    className="md-label-medium px-3 py-1.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.12)', color: 'white', border: '1px solid rgba(255,255,255,0.24)' }}
+                  >
+                    الحضور: {event.attendeeCount}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* CTA (desktop) */}
@@ -163,6 +183,78 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
                   {event.detailedDescription || event.shortDescription}
                 </p>
               </section>
+            )}
+
+            {/* Event Metadata */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <section
+                className="p-6 rounded-[28px]"
+                style={{ background: 'var(--md-surface-container-low)', border: '1px solid var(--md-outline-variant)' }}
+              >
+                <h3 className="md-title-large mb-4" style={{ color: 'var(--md-on-surface)' }}>موعد البداية</h3>
+                <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
+                  {event.startsAt ? new Date(event.startsAt).toLocaleString('fr-FR') : event.date}
+                </p>
+              </section>
+              <section
+                className="p-6 rounded-[28px]"
+                style={{ background: 'var(--md-surface-container-low)', border: '1px solid var(--md-outline-variant)' }}
+              >
+                <h3 className="md-title-large mb-4" style={{ color: 'var(--md-on-surface)' }}>موعد النهاية</h3>
+                <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
+                  {event.endsAt ? new Date(event.endsAt).toLocaleString('fr-FR') : (event.endDate || 'غير محدد')}
+                </p>
+              </section>
+              <section
+                className="p-6 rounded-[28px]"
+                style={{ background: 'var(--md-surface-container-low)', border: '1px solid var(--md-outline-variant)' }}
+              >
+                <h3 className="md-title-large mb-4" style={{ color: 'var(--md-on-surface)' }}>إجمالي الحضور</h3>
+                <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
+                  {event.attendeeCount ?? 0}
+                </p>
+              </section>
+            </div>
+
+            {(event.organizers || event.participants) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {event.organizers && event.organizers.length > 0 && (
+                  <section
+                    className="p-6 rounded-[28px]"
+                    style={{ background: 'var(--md-secondary-container)', border: '1px solid var(--md-outline-variant)' }}
+                  >
+                    <h3 className="md-title-large mb-5 flex items-center gap-3" style={{ color: 'var(--md-on-secondary-container)' }}>
+                      <Users size={22} /> المنظمون
+                    </h3>
+                    <ul className="space-y-3">
+                      {event.organizers.map((person) => (
+                        <li key={person.id} className="flex items-start gap-3 md-body-medium" style={{ color: 'var(--md-on-secondary-container)' }}>
+                          <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: 'var(--md-primary)' }} />
+                          {person.name} — {person.role}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+                {event.participants && event.participants.length > 0 && (
+                  <section
+                    className="p-6 rounded-[28px]"
+                    style={{ background: 'var(--md-warning-container)', border: '1px solid var(--md-outline-variant)' }}
+                  >
+                    <h3 className="md-title-large mb-5 flex items-center gap-3" style={{ color: 'var(--md-on-warning-container)' }}>
+                      <UserRound size={22} /> المشاركون
+                    </h3>
+                    <ul className="space-y-3">
+                      {event.participants.map((person) => (
+                        <li key={person.id} className="flex items-start gap-3 md-body-medium" style={{ color: 'var(--md-on-warning-container)' }}>
+                          <ChevronLeft size={18} className="mt-0.5 shrink-0 opacity-60" />
+                          {person.name} — {person.role}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </div>
             )}
 
             {/* Activities & Audience */}

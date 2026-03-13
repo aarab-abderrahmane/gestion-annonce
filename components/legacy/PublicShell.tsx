@@ -3,18 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import LegacyLayout from "@/components/legacy/Layout";
-import { MOCK_EVENTS } from "@/lib/mock-data";
 
 const pageToHref = (page: string) => {
   if (page === "home") return "/";
   if (page === "announcements") return "/announcements";
   if (page === "important-info") return "/important-info";
   if (page === "events") return "/events";
-  if (page.startsWith("event-")) {
-    const eventId = page.replace("event-", "");
-    const event = MOCK_EVENTS.find((item) => item.id === eventId);
-    return event ? `/events/${encodeURIComponent((event as any).slug ?? eventId)}` : "/events";
-  }
   return "/";
 };
 

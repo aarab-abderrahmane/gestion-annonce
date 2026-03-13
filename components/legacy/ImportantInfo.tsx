@@ -2,18 +2,22 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { MOCK_NEWS } from '@/lib/mock-data';
+import { NewsAlert } from '@/types';
 import { AlertCircle, CheckCircle2, AlertTriangle, EyeOff, Eye, Clock } from 'lucide-react';
 import Pagination from '@/components/shared/Pagination';
 
 const ITEMS_PER_PAGE = 6;
 
-const ImportantInfo: React.FC = () => {
+interface ImportantInfoProps {
+  newsItems: NewsAlert[];
+}
+
+const ImportantInfo: React.FC<ImportantInfoProps> = ({ newsItems }) => {
   const [showExpired, setShowExpired] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const now = new Date();
 
-  const newsList = MOCK_NEWS.filter(news => {
+  const newsList = newsItems.filter(news => {
     const isExpired = new Date(news.expiryDate) < now;
     return showExpired ? true : !isExpired;
   });

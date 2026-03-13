@@ -1,24 +1,40 @@
-"use client";
+export const revalidate = 300;
 
-import { useParams, useRouter } from "next/navigation";
-import EventDetail from "@/components/legacy/EventDetail";
-import { findEventBySlug } from "@/lib/mock-data";
+import { normalizeEvent } from '@/lib/portal-data';
+import { createClient } from '@/lib/supabase/server';
+import EventDetailRoute from '@/components/legacy/EventDetailRoute';
 
-export default function Page() {
-  const params = useParams<{ slug: string }>();
-  const router = useRouter();
-  const event = findEventBySlug(decodeURIComponent(params.slug));
+export async function generateStaticParams() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('events')
+    .select('slug')
+    .eq('status', 'published');
 
-  if (!event) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="rounded-[28px] p-8" style={{ background: "var(--md-surface-container-low)", border: "1px solid var(--md-outline-variant)" }}>
-          <h1 className="md-headline-medium mb-3">الفعالية غير موجودة</h1>
-          <button onClick={() => router.push("/events")} className="md-btn md-btn-filled">العودة إلى الفعاليات</button>
-        </div>
-      </div>
-    );
+  if (error) console.error(error);
+  return data?.map((item) => ({ slug: item.slug })) ?? [];
+}
+
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('events')
+    .select(`
+      id, title, slug, description, cover_image, location, starts_at, ends_at, total_attendees, status,
+      event_people(id, name, role, type),
+      event_photos(photo_url),
+      event_category_links(event_categories(name, slug))
+    `)
+    .eq('status', 'published')
+    .eq('slug', decodeURIComponent(slug))
+    .maybeSingle();
+
+  if (error) console.error(error);
+  if (!data) {
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">Not found</div>;
   }
 
-  return <EventDetail event={event} onBack={() => router.push("/events")} onNavigate={() => {}} />;
+  const event = normalizeEvent(data);
+  return <EventDetailRoute event={event} />;
 }

@@ -2,31 +2,32 @@
 
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { MOCK_EVENTS } from '@/lib/mock-data';
+import { Event } from '@/types';
 import { MapPin, Calendar as CalendarIcon, ArrowLeft, Search, X, ChevronDown, Check } from 'lucide-react';
 import Pagination from '@/components/shared/Pagination';
 
 interface EventsProps {
+  events: Event[];
   onNavigate: (page: string) => void;
 }
 
 const ITEMS_PER_PAGE = 6;
 
-const Events: React.FC<EventsProps> = ({ onNavigate }) => {
+const Events: React.FC<EventsProps> = ({ events, onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
   const [selectedYear, setSelectedYear] = useState('الكل');
   const [viewStatus, setViewStatus] = useState<'all' | 'upcoming' | 'past'>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const categories = useMemo(() => ['الكل', ...Array.from(new Set(MOCK_EVENTS.map(e => e.category || 'عام')))], []);
+  const categories = useMemo(() => ['الكل', ...Array.from(new Set(events.map(e => e.category || 'عام')))], []);
   const years = useMemo(() => {
-    const allYears = MOCK_EVENTS.map(e => new Date(e.date).getFullYear().toString());
+    const allYears = events.map(e => new Date(e.date).getFullYear().toString());
     return ['الكل', ...Array.from(new Set(allYears)).sort((a, b) => b.localeCompare(a))];
   }, []);
 
   const filteredEvents = useMemo(() =>
-    MOCK_EVENTS.filter(event => {
+    events.filter(event => {
       const matchesSearch = event.title.includes(searchQuery) || event.shortDescription.includes(searchQuery) || event.location.includes(searchQuery);
       const matchesCategory = selectedCategory === 'الكل' || event.category === selectedCategory;
       const eventYear = new Date(event.date).getFullYear().toString();

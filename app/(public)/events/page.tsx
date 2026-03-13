@@ -1,23 +1,24 @@
-"use client";
+export const revalidate = 300;
 
-import { useRouter } from "next/navigation";
-import Events from "@/components/legacy/Events";
-import { MOCK_EVENTS } from "@/lib/mock-data";
+import EventsRoute from '@/components/legacy/EventsRoute';
+import { normalizeEvent } from '@/lib/portal-data';
+import { createClient } from '@/lib/supabase/server';
 
-export default function Page() {
-  const router = useRouter();
+export default async function Page() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('events')
+    .select(`
+      id, title, slug, description, cover_image, location, starts_at, ends_at, total_attendees, status,
+      event_people(id, name, role, type),
+      event_photos(photo_url),
+      event_category_links(event_categories(name, slug))
+    `)
+    .eq('status', 'published')
+    .order('starts_at', { ascending: false });
 
-  return (
-    <Events
-      onNavigate={(page) => {
-        if (page.startsWith("event-")) {
-          const eventId = page.replace("event-", "");
-          const event = MOCK_EVENTS.find((item) => item.id === eventId);
-          router.push(event ? `/events/${encodeURIComponent((event as any).slug ?? eventId)}` : "/events");
-          return;
-        }
-        router.push(page === "events" ? "/events" : "/");
-      }}
-    />
-  );
+  if (error) console.error(error);
+
+  const events = (data ?? []).map(normalizeEvent);
+  return <EventsRoute events={events} />;
 }

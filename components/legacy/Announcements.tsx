@@ -2,7 +2,6 @@
 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { MOCK_ANNOUNCEMENTS } from '@/lib/mock-data';
 import { Search, Download, FileText, Check, X, Paperclip, Eye, FileJson, Filter, ChevronDown } from 'lucide-react';
 import { Announcement } from '@/types';
 import Pagination from '@/components/shared/Pagination';
@@ -190,7 +189,11 @@ const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
   );
 };
 
-const Announcements: React.FC = () => {
+interface AnnouncementsProps {
+  announcements: Announcement[];
+}
+
+const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterOnlyWithAttachments, setFilterOnlyWithAttachments] = useState(false);
@@ -199,8 +202,8 @@ const Announcements: React.FC = () => {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
-  const categories = useMemo(() => ['all', ...Array.from(new Set(MOCK_ANNOUNCEMENTS.map(a => a.category)))], []);
-  const departments = useMemo(() => ['all', ...Array.from(new Set(MOCK_ANNOUNCEMENTS.filter(a => a.department).map(a => a.department as string)))], []);
+  const categories = useMemo(() => ['all', ...Array.from(new Set(announcements.map(a => a.category)))], []);
+  const departments = useMemo(() => ['all', ...Array.from(new Set(announcements.filter(a => a.department).map(a => a.department as string)))], []);
 
   useEffect(() => { setCurrentPage(1); }, [filterCategory, filterDepartment, filterOnlyWithAttachments, searchQuery]);
 
@@ -211,7 +214,7 @@ const Announcements: React.FC = () => {
   }, [selectedAnnouncement]);
 
   const filtered = useMemo(() =>
-    MOCK_ANNOUNCEMENTS.filter(ann => {
+    announcements.filter(ann => {
       const matchesCategory = filterCategory === 'all' || ann.category === filterCategory;
       const matchesDepartment = filterDepartment === 'all' || ann.department === filterDepartment;
       const matchesAttachments = !filterOnlyWithAttachments || (ann.attachments && ann.attachments.length > 0);

@@ -2,10 +2,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { MOCK_ANNOUNCEMENTS, MOCK_NEWS, MOCK_EVENTS } from '@/lib/mock-data';
+import { Announcement, Event, NewsAlert } from '@/types';
 import { Bell, Info, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Search, X, FileText } from 'lucide-react';
 
 interface HomeProps {
+  announcements: Announcement[];
+  newsItems: NewsAlert[];
+  events: Event[];
   onNavigate: (page: string) => void;
 }
 
@@ -32,11 +35,11 @@ const FEATURED_SLIDES = [
     subtitle: 'شاركنا أفكارك لتطوير مستقبل مؤسستنا نحو الأفضل',
     image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=1600',
     cta: 'سجل الآن',
-    target: 'event-e1',
+    target: 'events',
   },
 ];
 
-const Home: React.FC<HomeProps> = ({ onNavigate }) => {
+const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, onNavigate }) => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -59,9 +62,9 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     return () => clearInterval(timer);
   }, [nextSlide]);
 
-  const latestAnnouncements = MOCK_ANNOUNCEMENTS.slice(0, 3);
-  const breakingNews = MOCK_NEWS.filter(n => new Date(n.expiryDate) > new Date()).slice(0, 3);
-  const upcomingEvents = MOCK_EVENTS.filter(e => e.isUpcoming).slice(0, 3);
+  const latestAnnouncements = announcements.slice(0, 3);
+  const breakingNews = newsItems.filter(n => new Date(n.expiryDate) > new Date()).slice(0, 3);
+  const upcomingEvents = events.filter(e => e.isUpcoming).slice(0, 3);
 
   // ── Quick Search ────────────────────────────────────────────────
   const [query, setQuery] = useState('');
@@ -71,13 +74,13 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const trimmed = query.trim();
 
   const searchResults = trimmed ? {
-    announcements: MOCK_ANNOUNCEMENTS
+    announcements: announcements
       .filter(a => a.title.includes(trimmed) || a.content.includes(trimmed))
       .slice(0, 3),
-    news: MOCK_NEWS
+    news: newsItems
       .filter(n => n.title.includes(trimmed) || n.description.includes(trimmed))
       .slice(0, 3),
-    events: MOCK_EVENTS
+    events: events
       .filter(e => e.title.includes(trimmed) || e.shortDescription.includes(trimmed) || e.location.includes(trimmed))
       .slice(0, 3),
   } : null;

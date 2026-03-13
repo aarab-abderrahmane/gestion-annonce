@@ -1,15 +1,43 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { CalendarDays, ChevronLeft, Paperclip } from "lucide-react";
-import { findAnnouncementBySlug } from "@/lib/mock-data";
+export const revalidate = 60;
+
+import Link from 'next/link';
+import { CalendarDays, ChevronLeft, Paperclip } from 'lucide-react';
+import { normalizeAnnouncement } from '@/lib/portal-data';
+import { createClient } from '@/lib/supabase/server';
+
+export async function generateStaticParams() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('slug')
+    .eq('status', 'published');
+
+  if (error) console.error(error);
+  return data?.map((item) => ({ slug: item.slug })) ?? [];
+}
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const announcement = findAnnouncementBySlug(decodeURIComponent(slug));
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('announcements')
+    .select(`
+      id, title, slug, description, published_at, expires_at, status,
+      divisions(name),
+      groups(name),
+      announcement_files(file_url, file_name, file_type),
+      announcement_category_links(announcement_categories(name, slug))
+    `)
+    .eq('status', 'published')
+    .eq('slug', decodeURIComponent(slug))
+    .maybeSingle();
 
-  if (!announcement) {
-    notFound();
+  if (error) console.error(error);
+  if (!data) {
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">Not found</div>;
   }
+
+  const announcement = normalizeAnnouncement(data);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -32,10 +60,10 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             <h2 className="md-title-large mb-4" style={{ color: 'var(--md-on-surface)' }}>المرفقات</h2>
             <div className="space-y-3">
               {announcement.attachments.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-4 rounded-[16px]" style={{ background: 'var(--md-surface-container)', border: '1px solid var(--md-outline-variant)' }}>
+                <a key={index} href={file.url} target="_blank" rel="noreferrer" className="flex items-center justify-between p-4 rounded-[16px]" style={{ background: 'var(--md-surface-container)', border: '1px solid var(--md-outline-variant)' }}>
                   <span className="flex items-center gap-3 md-title-small"><Paperclip size={16} />{file.name}</span>
-                  <span className="md-label-large" style={{ color: 'var(--md-primary)' }}>تنزيل</span>
-                </div>
+                  <span className="md-label-large" style={{ color: 'var(--md-primary)' }}>فتح</span>
+                </a>
               ))}
             </div>
           </section>

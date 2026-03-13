@@ -35,12 +35,22 @@ export interface ProgramItem {
   activity: string;
 }
 
+export interface EventPerson {
+  id: string;
+  name: string;
+  role: string;
+  type: 'participant' | 'organizer';
+  image: string;
+}
+
 export interface Event {
   id: string;
   slug: string;
   title: string;
   date: string;
   endDate?: string;
+  startsAt?: string;
+  endsAt?: string;
   location: string;
   shortDescription: string;
   detailedDescription?: string;
@@ -50,6 +60,11 @@ export interface Event {
   program?: ProgramItem[];
   gallery?: string[];
   speakers?: Speaker[];
+  people?: EventPerson[];
+  participants?: EventPerson[];
+  organizers?: EventPerson[];
+  attendeeCount?: number;
+  categories?: string[];
   results?: string[];
   documents?: { name: string; url: string }[];
   isUpcoming: boolean;
