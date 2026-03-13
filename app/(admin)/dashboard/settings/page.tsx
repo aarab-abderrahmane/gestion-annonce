@@ -1,3 +1,11 @@
-export default function SettingsAdminPage() {
-  return <div className="rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] p-6 text-sm text-[#6d7f82] shadow-sm">Settings page placeholder.</div>;
+import SettingsForm from '@/components/admin/SettingsForm';
+import { createClient } from '@/lib/supabase/server';
+
+export default async function SettingsAdminPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return <SettingsForm email={user?.email ?? ''} />;
 }

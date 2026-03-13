@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BellRing, House, Newspaper, Megaphone, Settings } from 'lucide-react';
+import { BellRing, CalendarDays, FolderTree, House, Newspaper, Megaphone, Settings } from 'lucide-react';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
   { href: '/dashboard/breaking-news', label: 'Breaking News', icon: BellRing },
   { href: '/dashboard/announcements', label: 'Announcements', icon: Newspaper },
+  { href: '/dashboard/events', label: 'Events', icon: CalendarDays },
+  { href: '/dashboard/categories', label: 'Categories', icon: FolderTree },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 

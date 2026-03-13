@@ -8,6 +8,8 @@ const titleMap: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/dashboard/breaking-news': 'Breaking News',
   '/dashboard/announcements': 'Announcements',
+  '/dashboard/events': 'Events',
+  '/dashboard/categories': 'Categories',
   '/dashboard/settings': 'Settings',
 };
 
