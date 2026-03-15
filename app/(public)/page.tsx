@@ -1,6 +1,7 @@
 export const revalidate = 30;
 
 import HomeRoute from '@/components/legacy/HomeRoute';
+import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
 import { normalizeAnnouncement, normalizeEvent, normalizeNews } from '@/lib/portal-data';
 import { createClient } from '@/lib/supabase/server';
 
@@ -19,7 +20,6 @@ export default async function Page() {
         id, title, slug, description, published_at, expires_at, status,
         divisions(name),
         groups(name),
-        announcement_files(file_url, file_name, file_type),
         announcement_category_links(announcement_categories(name, slug))
       `)
       .eq('status', 'published')
@@ -40,8 +40,9 @@ export default async function Page() {
   if (announcementsError) console.error(announcementsError);
   if (eventsError) console.error(eventsError);
 
+  const announcementsWithFiles = await hydrateAnnouncementFiles(supabase, announcementsData ?? []);
   const news = (breakingNewsData ?? []).map(normalizeNews);
-  const announcements = (announcementsData ?? []).map(normalizeAnnouncement);
+  const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const events = (eventsData ?? []).map(normalizeEvent);
 
   return <HomeRoute announcements={announcements} newsItems={news} events={events} />;

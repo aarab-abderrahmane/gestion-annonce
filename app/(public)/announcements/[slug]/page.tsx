@@ -2,6 +2,7 @@ export const revalidate = 60;
 
 import Link from 'next/link';
 import { CalendarDays, ChevronLeft, Paperclip } from 'lucide-react';
+import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
 import { normalizeAnnouncement } from '@/lib/portal-data';
 import { createClient } from '@/lib/supabase/server';
 
@@ -25,7 +26,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       id, title, slug, description, published_at, expires_at, status,
       divisions(name),
       groups(name),
-      announcement_files(file_url, file_name, file_type),
       announcement_category_links(announcement_categories(name, slug))
     `)
     .eq('status', 'published')
@@ -37,7 +37,8 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     return <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">Not found</div>;
   }
 
-  const announcement = normalizeAnnouncement(data);
+  const [announcementRow] = await hydrateAnnouncementFiles(supabase, [data]);
+  const announcement = normalizeAnnouncement(announcementRow);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">

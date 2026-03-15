@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation';
 import AnnouncementForm from '@/components/admin/forms/AnnouncementForm';
+import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
 import { createClient } from '@/lib/supabase/server';
+
+type AnnouncementCategoryLink = { category_id: string };
 
 export default async function EditAnnouncementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,7 +21,6 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
         group_id,
         expires_at,
         status,
-        announcement_files(id, file_url, file_name, file_type),
         announcement_category_links(category_id)
       `)
       .eq('id', id)
@@ -34,6 +36,8 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
   if (categoriesError) console.error(categoriesError);
 
   if (!announcement) notFound();
+
+  const [announcementWithFiles] = await hydrateAnnouncementFiles(supabase, [announcement], { includeId: true });
 
   return (
     <div className="space-y-6">
@@ -53,10 +57,10 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
           description: announcement.description ?? '',
           division_id: announcement.division_id ?? '',
           group_id: announcement.group_id ?? '',
-          category_ids: (announcement.announcement_category_links ?? []).map((link: any) => link.category_id),
+          category_ids: (announcement.announcement_category_links ?? []).map((link: AnnouncementCategoryLink) => link.category_id),
           expires_at: announcement.expires_at ? new Date(announcement.expires_at).toISOString().slice(0, 10) : '',
           status: (announcement.status as 'draft' | 'published') ?? 'draft',
-          files: announcement.announcement_files ?? [],
+          files: announcementWithFiles.announcement_files ?? [],
         }}
       />
     </div>

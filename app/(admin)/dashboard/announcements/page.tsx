@@ -1,6 +1,26 @@
 import Link from 'next/link';
 import AnnouncementsTable from '@/components/admin/AnnouncementsTable';
+import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
 import { createClient } from '@/lib/supabase/server';
+
+type AnnouncementCategory = { id?: string | null; name?: string | null; slug?: string | null };
+type AnnouncementCategoryLink = {
+  announcement_categories?: AnnouncementCategory | AnnouncementCategory[] | null;
+};
+type AnnouncementListRow = {
+  id: string;
+  title: string;
+  status: string;
+  published_at: string;
+  divisions?: { name?: string | null } | null;
+  announcement_files?: Array<{ file_url: string | null }> | null;
+  announcement_category_links?: AnnouncementCategoryLink[] | null;
+};
+
+function getCategoryRecord(record?: AnnouncementCategory | AnnouncementCategory[] | null) {
+  if (Array.isArray(record)) return record[0];
+  return record;
+}
 
 export default async function AnnouncementsAdminPage() {
   const supabase = await createClient();
@@ -14,7 +34,6 @@ export default async function AnnouncementsAdminPage() {
         status,
         published_at,
         divisions(name),
-        announcement_files(file_url),
         announcement_category_links(
           announcement_categories(id, name, slug)
         )
@@ -28,18 +47,26 @@ export default async function AnnouncementsAdminPage() {
   if (divisionsError) console.error(divisionsError);
   if (categoriesError) console.error(categoriesError);
 
-  const rows = (announcements ?? []).map((item: any) => ({
+  const announcementsWithFiles = await hydrateAnnouncementFiles(supabase, announcements ?? []);
+
+  const rows = announcementsWithFiles.map((item: AnnouncementListRow) => ({
     id: item.id,
     title: item.title,
     divisionName: item.divisions?.name ?? '',
     status: item.status,
     publishedAt: item.published_at,
     files: item.announcement_files ?? [],
-    categories: (item.announcement_category_links ?? []).map((link: any) => ({
-      id: link.announcement_categories?.id ?? link.announcement_categories?.[0]?.id ?? '',
-      name: link.announcement_categories?.name ?? link.announcement_categories?.[0]?.name ?? '',
-      slug: link.announcement_categories?.slug ?? link.announcement_categories?.[0]?.slug ?? '',
-    })).filter((category: any) => category.id),
+    categories: (item.announcement_category_links ?? [])
+      .map((link) => {
+        const category = getCategoryRecord(link.announcement_categories);
+
+        return {
+          id: category?.id ?? '',
+          name: category?.name ?? '',
+          slug: category?.slug ?? '',
+        };
+      })
+      .filter((category) => category.id),
   }));
 
   return (

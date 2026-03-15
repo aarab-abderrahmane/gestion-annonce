@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getStorageErrorMessage, STORAGE_BUCKET } from '@/lib/storage';
 
 type Category = { id: string; name: string; slug: string };
 type EventPerson = { name: string; role: string; type: 'participant' | 'organizer' };
@@ -30,8 +31,6 @@ type Props = {
   initialValues: InitialValues;
   id?: string;
 };
-
-const STORAGE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'announcements';
 
 function slugify(value: string) {
   return value
@@ -105,7 +104,7 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
       cacheControl: '3600',
       upsert: false,
     });
-    if (uploadError) throw new Error(uploadError.message);
+    if (uploadError) throw new Error(getStorageErrorMessage(uploadError.message));
     const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
     return data.publicUrl;
   }

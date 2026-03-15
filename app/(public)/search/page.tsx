@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Bell, Calendar, Info, Search } from 'lucide-react';
+import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
 import { normalizeAnnouncement, normalizeEvent, normalizeNews } from '@/lib/portal-data';
 import { createClient } from '@/lib/supabase/server';
 
@@ -20,7 +21,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
         id, title, slug, description, published_at, expires_at, status,
         divisions(name),
         groups(name),
-        announcement_files(file_url, file_name, file_type),
         announcement_category_links(announcement_categories(name, slug))
       `)
       .eq('status', 'published')
@@ -41,7 +41,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   if (announcementsError) console.error(announcementsError);
   if (eventsError) console.error(eventsError);
 
-  const announcements = (announcementsData ?? []).map(normalizeAnnouncement);
+  const announcementsWithFiles = await hydrateAnnouncementFiles(supabase, announcementsData ?? []);
+  const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const news = (breakingNewsData ?? []).map(normalizeNews);
   const events = (eventsData ?? []).map(normalizeEvent);
 

@@ -8,15 +8,77 @@ const levelMap: Record<string, NewsAlert['riskLevel']> = {
 
 const dateOnly = (value?: string | null) => (value ? value.split('T')[0] : '');
 
-export const normalizeAnnouncement = (row: any): Announcement => {
+type CategoryRecord = { id?: string | null; name?: string | null; slug?: string | null };
+type DivisionRecord = { name?: string | null };
+type GroupRecord = { name?: string | null };
+type AnnouncementFileRecord = { file_name?: string | null; file_url?: string | null };
+type AnnouncementCategoryLinkRecord = {
+  announcement_categories?: CategoryRecord | CategoryRecord[] | null;
+};
+type AnnouncementRow = {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  published_at?: string | null;
+  expires_at?: string | null;
+  divisions?: DivisionRecord | null;
+  groups?: GroupRecord | null;
+  announcement_files?: AnnouncementFileRecord[] | null;
+  announcement_category_links?: AnnouncementCategoryLinkRecord[] | null;
+};
+
+type NewsRow = {
+  id: string;
+  slug: string;
+  title: string;
+  level?: string | null;
+  created_at: string;
+  expires_at: string;
+};
+
+type EventPersonRecord = {
+  id?: string | null;
+  name: string;
+  role: string;
+  type: 'participant' | 'organizer';
+};
+
+type EventPhotoRecord = { photo_url?: string | null };
+type EventCategoryLinkRecord = {
+  event_categories?: CategoryRecord | CategoryRecord[] | null;
+};
+type EventRow = {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  cover_image?: string | null;
+  location?: string | null;
+  starts_at: string;
+  ends_at: string;
+  total_attendees?: number | null;
+  event_people?: EventPersonRecord[] | null;
+  event_photos?: EventPhotoRecord[] | null;
+  event_category_links?: EventCategoryLinkRecord[] | null;
+};
+
+function getRelatedName(record?: CategoryRecord | CategoryRecord[] | null) {
+  if (Array.isArray(record)) return record[0]?.name ?? null;
+  return record?.name ?? null;
+}
+
+export const normalizeAnnouncement = (row: AnnouncementRow): Announcement => {
   const categories = (row.announcement_category_links ?? [])
-    .map((link: any) => link.announcement_categories?.name)
+    .map((link) => getRelatedName(link.announcement_categories))
     .filter(Boolean);
 
-  const attachments = (row.announcement_files ?? []).map((file: any) => ({
-    name: file.file_name || file.file_url?.split('/').pop() || 'file',
-    url: file.file_url,
-  }));
+  const attachments = (row.announcement_files ?? [])
+    .filter((file) => file.file_url)
+    .map((file) => ({
+      name: file.file_name || file.file_url?.split('/').pop() || 'file',
+      url: file.file_url as string,
+    }));
 
   return {
     id: row.id,
@@ -31,7 +93,7 @@ export const normalizeAnnouncement = (row: any): Announcement => {
   };
 };
 
-export const normalizeNews = (row: any): NewsAlert => ({
+export const normalizeNews = (row: NewsRow): NewsAlert => ({
   id: row.id,
   slug: row.slug,
   title: row.title,
@@ -41,23 +103,23 @@ export const normalizeNews = (row: any): NewsAlert => ({
   expiryDate: row.expires_at,
 });
 
-export const normalizeEvent = (row: any): Event => {
+export const normalizeEvent = (row: EventRow): Event => {
   const categories = (row.event_category_links ?? [])
-    .map((link: any) => link.event_categories?.name)
+    .map((link) => getRelatedName(link.event_categories))
     .filter(Boolean);
 
-  const photos = (row.event_photos ?? []).map((photo: any) => photo.photo_url).filter(Boolean);
+  const photos = (row.event_photos ?? []).map((photo) => photo.photo_url).filter(Boolean);
   const gallery = [row.cover_image, ...photos].filter(Boolean);
-  const people = (row.event_people ?? []).map((person: any, index: number) => ({
+  const people = (row.event_people ?? []).map((person, index: number) => ({
     id: person.id || `${row.id}-${index}`,
     name: person.name,
     role: person.role,
     type: person.type,
     image: `https://ui-avatars.com/api/?background=CCE8E4&color=051F1E&name=${encodeURIComponent(person.name)}`,
   }));
-  const organizers = people.filter((person: any) => person.type === 'organizer');
-  const participants = people.filter((person: any) => person.type === 'participant');
-  const speakers = organizers.map((person: any) => ({
+  const organizers = people.filter((person) => person.type === 'organizer');
+  const participants = people.filter((person) => person.type === 'participant');
+  const speakers = organizers.map((person) => ({
     id: person.id,
     name: person.name,
     role: person.role,
