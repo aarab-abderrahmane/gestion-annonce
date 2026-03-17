@@ -1,23 +1,24 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Event } from "@/types";
+import type { Event } from "@/types";
 import {
   CalendarDays,
+  Check,
+  ChevronLeft,
   Clock3,
   Copy,
+  Linkedin,
   MapPin,
   MessageCircle,
   Share2,
-  Ticket,
+  Twitter,
   Users,
   X as CloseIcon,
-  Check,
-  ChevronLeft,
-  Linkedin,
-  Twitter,
   ZoomIn,
-  Timer,
+  Newspaper,
+  Tag,
+  BookOpen,
 } from "lucide-react";
 
 interface EventDetailProps {
@@ -27,164 +28,157 @@ interface EventDetailProps {
 }
 
 type CountdownParts = { days: number; hours: number; minutes: number };
+type Person = { id: string; name: string; role: string; image?: string };
+
+/* ── Palette anchored to site's MD3 primary #006A60 ─────────────────── */
+const P = {
+  primary: "#006A60",
+  primaryDark: "#004E47",
+  primaryLight: "#9EF2E4",
+  primaryContainer: "#CCE8E4",
+  surface: "#F4FBF8",
+  surfaceLow: "#EFF5F2",
+  onSurface: "#191C1C",
+  onSurfaceMuted: "#3F4946",
+  outline: "#6F7977",
+  outlineVariant: "#BEC9C6",
+  accent: "#4A6360",
+  black: "#0B1110",
+};
 
 const PERSON_FALLBACK =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='48' fill='%23CCE8E4'/><circle cx='48' cy='36' r='18' fill='%234A6360'/><path d='M20 82c6-14 18-22 28-22s22 8 28 22' fill='%234A6360'/></svg>";
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='48' fill='%239EF2E4'/><circle cx='48' cy='35' r='18' fill='%23006A60'/><path d='M20 82c6-14 18-22 28-22s22 8 28 22' fill='%23006A60'/></svg>";
 
-/* ─── helpers ─── */
 function formatDate(value?: string) {
   if (!value) return "Not specified";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 function formatTime(value?: string) {
   if (!value) return "Not specified";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
 function getStatus(event: Event) {
   const now = Date.now();
   const start = event.startsAt ? new Date(event.startsAt).getTime() : NaN;
   const end = event.endsAt ? new Date(event.endsAt).getTime() : NaN;
-  if (!isNaN(start) && !isNaN(end) && now >= start && now <= end) {
-    return { label: "Live Now 🔴", bg: "rgba(220,38,38,0.16)", color: "#dc2626", border: "1px solid rgba(248,113,113,0.4)" };
-  }
-  if ((!isNaN(end) && now > end) || (!event.isUpcoming && isNaN(start))) {
-    return { label: "Ended ✓", bg: "rgba(21,128,61,0.16)", color: "#15803d", border: "1px solid rgba(74,222,128,0.35)" };
-  }
-  return { label: "Upcoming", bg: "rgba(245,158,11,0.16)", color: "#d97706", border: "1px solid rgba(251,191,36,0.35)" };
+
+  if (!Number.isNaN(start) && !Number.isNaN(end) && now >= start && now <= end)
+    return { label: "Live Now 🔴", bg: "#B00020", fg: "#FFFFFF" };
+
+  if ((!Number.isNaN(end) && now > end) || (!event.isUpcoming && Number.isNaN(start)))
+    return { label: "Ended ✓", bg: "#CCE8E4", fg: "#004E47" };
+
+  return { label: "Upcoming", bg: "#006A60", fg: "#FFFFFF" };
 }
 
 function getCountdown(target?: string, nowMs = Date.now()): CountdownParts {
   if (!target) return { days: 0, hours: 0, minutes: 0 };
   const diff = new Date(target).getTime() - nowMs;
-  if (isNaN(diff) || diff <= 0) return { days: 0, hours: 0, minutes: 0 };
-  const totalMin = Math.floor(diff / 60000);
+  if (Number.isNaN(diff) || diff <= 0) return { days: 0, hours: 0, minutes: 0 };
+  const totalMinutes = Math.floor(diff / 60000);
   return {
-    days: Math.floor(totalMin / 1440),
-    hours: Math.floor((totalMin % 1440) / 60),
-    minutes: totalMin % 60,
+    days: Math.floor(totalMinutes / 1440),
+    hours: Math.floor((totalMinutes % 1440) / 60),
+    minutes: totalMinutes % 60,
   };
 }
 
 function getPeople(event: Event) {
-  const organizers =
-    event.organizers ?? event.people?.filter((p) => p.type === "organizer") ?? [];
-  const participants =
-    event.participants ?? event.people?.filter((p) => p.type === "participant") ?? [];
+  const organizers = event.organizers ?? event.people?.filter((p) => p.type === "organizer") ?? [];
+  const participants = event.participants ?? event.people?.filter((p) => p.type === "participant") ?? [];
   return { organizers, participants };
 }
 
-/* ─── sub-components ─── */
-function SectionHeader({ label, title }: { label: string; title: string }) {
+/* ── Small reusable pieces ─────────────────────────────────────────── */
+
+function Divider() {
+  return <hr style={{ borderColor: P.outlineVariant, borderTopWidth: 1, margin: "0" }} />;
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-6">
-      <p
-        className="md-label-medium mb-1 uppercase tracking-widest"
-        style={{ color: "var(--md-primary)" }}
+    <p
+      className="text-[11px] font-bold uppercase tracking-[0.28em] mb-4"
+      style={{ color: P.primary }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function FactRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-4 py-3" style={{ borderBottom: `1px solid ${P.outlineVariant}` }}>
+      <span
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full mt-0.5"
+        style={{ background: P.primaryContainer, color: P.primary }}
       >
-        {label}
-      </p>
-      <h2 className="md-headline-small" style={{ color: "var(--md-on-surface)" }}>
-        {title}
-      </h2>
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: P.outline }}>
+          {label}
+        </p>
+        <p className="mt-0.5 text-[15px] font-medium leading-6" style={{ color: P.onSurface }}>
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
 
-function InfoCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function PersonCard({ person, organizer }: { person: Person; organizer?: boolean }) {
   return (
-    <article
-      className="flex flex-col gap-3 rounded-[20px] p-5"
-      style={{
-        background: "var(--md-surface-container)",
-        border: "1px solid var(--md-outline-variant)",
-      }}
-    >
-      <div
-        className="flex h-10 w-10 items-center justify-center rounded-xl"
-        style={{
-          background: "var(--md-secondary-container)",
-          color: "var(--md-on-secondary-container)",
-        }}
-      >
-        {icon}
-      </div>
-      <div>
-        <p className="md-label-small mb-0.5" style={{ color: "var(--md-on-surface-variant)" }}>
-          {label}
-        </p>
-        <p className="md-title-small" style={{ color: "var(--md-on-surface)" }}>
-          {value}
-        </p>
-      </div>
-    </article>
-  );
-}
-
-function PersonCard({ person }: { person: { id: string; name: string; role: string; image?: string } }) {
-  return (
-    <article
-      className="flex items-center gap-4 rounded-[20px] p-4"
-      style={{
-        background: "var(--md-surface-container)",
-        border: "1px solid var(--md-outline-variant)",
-      }}
+    <div
+      className="flex items-center gap-3 py-3"
+      style={{ borderBottom: `1px solid ${P.outlineVariant}` }}
     >
       <img
         src={person.image || PERSON_FALLBACK}
         alt={person.name}
-        className="h-14 w-14 flex-shrink-0 rounded-full object-cover"
-        style={{ border: "2px solid var(--md-outline-variant)" }}
-        onError={(e) => { (e.currentTarget as HTMLImageElement).src = PERSON_FALLBACK; }}
+        className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+        onError={(e) => { e.currentTarget.src = PERSON_FALLBACK; }}
+        style={{ border: `2px solid ${P.primaryContainer}` }}
       />
-      <div className="min-w-0">
-        <p className="md-title-small truncate" style={{ color: "var(--md-on-surface)" }}>
-          {person.name}
-        </p>
-        <p className="md-body-small mt-0.5" style={{ color: "var(--md-on-surface-variant)" }}>
-          {person.role}
-        </p>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold truncate" style={{ color: P.onSurface }}>{person.name}</p>
+        <p className="text-xs mt-0.5 truncate" style={{ color: P.onSurfaceMuted }}>{person.role}</p>
       </div>
-    </article>
-  );
-}
-
-function CountdownBox({ value, label }: { value: number; label: string }) {
-  return (
-    <div
-      className="flex flex-col items-center justify-center rounded-[24px] py-6 px-4"
-      style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.18)" }}
-    >
-      <span
-        className="md-display-small font-extrabold tabular-nums"
-        style={{ lineHeight: 1 }}
-      >
-        {String(value).padStart(2, "0")}
-      </span>
-      <span
-        className="md-label-small mt-2 uppercase tracking-widest"
-        style={{ color: "rgba(255,255,255,0.65)" }}
-      >
-        {label}
-      </span>
+      {organizer && (
+        <span
+          className="text-[10px] font-bold uppercase tracking-[0.18em] px-2 py-1 rounded-full flex-shrink-0"
+          style={{ background: P.primaryContainer, color: P.primary }}
+        >
+          Organizer
+        </span>
+      )}
     </div>
   );
 }
 
-/* ─── main component ─── */
+function CountdownBlock({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="text-center">
+      <div
+        className="text-4xl font-black tabular-nums leading-none"
+        style={{ color: "#FFFFFF" }}
+      >
+        {String(value).padStart(2, "0")}
+      </div>
+      <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.26em]" style={{ color: "rgba(255,255,255,0.65)" }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main component ────────────────────────────────────────────────── */
 const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -194,39 +188,33 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
   const eventUrl = typeof window !== "undefined" ? window.location.href : "";
   const status = getStatus(event);
   const eventType = event.category || event.categories?.[0] || "Event";
-  const heroImage =
-    event.gallery?.[0] || event.logo || `https://picsum.photos/seed/${event.id}/1600/900`;
+  const heroImage = event.gallery?.[0] || event.logo || `https://picsum.photos/seed/${event.id}/1600/1000`;
+  const description = event.detailedDescription || event.shortDescription || "No description provided.";
   const { organizers, participants } = getPeople(event);
   const attendeeCount = event.attendeeCount ?? participants.length;
-  const isUpcoming = status.label === "Upcoming";
   const countdown = getCountdown(event.startsAt, nowMs);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(eventUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const shareOptions = [
     {
-      name: "WhatsApp",
-      icon: <MessageCircle size={22} />,
-      color: "#25D366",
-      url: `https://wa.me/?text=${encodeURIComponent(event.title + " " + eventUrl)}`,
+      name: "WhatsApp", icon: <MessageCircle size={20} />, color: "#25D366",
+      url: `https://wa.me/?text=${encodeURIComponent(event.title + " " + eventUrl)}`
     },
     {
-      name: "LinkedIn",
-      icon: <Linkedin size={22} />,
-      color: "#0077B5",
-      url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(eventUrl)}`,
+      name: "LinkedIn", icon: <Linkedin size={20} />, color: "#0077B5",
+      url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(eventUrl)}`
     },
     {
-      name: "X",
-      icon: <Twitter size={22} />,
-      color: "#111827",
-      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(event.title)}&url=${encodeURIComponent(eventUrl)}`,
+      name: "X / Twitter", icon: <Twitter size={20} />, color: "#111827",
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(event.title)}&url=${encodeURIComponent(eventUrl)}`
     },
   ];
+
+  const handleCopy = async () => {
+    if (!eventUrl || !navigator?.clipboard) return;
+    await navigator.clipboard.writeText(eventUrl);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
 
   useEffect(() => {
     document.body.style.overflow = shareOpen || zoomImg ? "hidden" : "";
@@ -234,552 +222,473 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
   }, [shareOpen, zoomImg]);
 
   useEffect(() => {
-    if (!isUpcoming || !event.startsAt) return;
+    if (!event.isUpcoming || !event.startsAt) return;
     const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
     return () => window.clearInterval(id);
-  }, [event.startsAt, isUpcoming]);
+  }, [event.isUpcoming, event.startsAt]);
+
+  const reportDate = formatDate(event.startsAt || event.date);
+  const serif = '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif';
 
   return (
-    <div style={{ background: "var(--md-surface)", minHeight: "100vh", paddingBottom: "96px" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background:
+          "radial-gradient(circle at top, rgba(158,242,228,0.18), transparent 28%), linear-gradient(180deg, #F8FEFD 0, #F2F8F6 220px, #EEF4F2 100%)",
+        fontFamily: "var(--md-font-brand)",
+      }}
+    >
+      <div style={{ background: P.primaryDark }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.18)" }}
+          >
+            <ChevronLeft size={16} />
+            Back
+          </button>
 
-      {/* ═══════════════════════════════════════════════
-          SECTION 1 — HERO
-      ═══════════════════════════════════════════════ */}
-      <section
-        className="relative overflow-hidden"
-        style={{ minHeight: 520, borderRadius: "0 0 40px 40px", background: "#07110c" }}
-      >
-        {/* hero image */}
-        <img
-          src={heroImage}
-          alt={event.title}
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ opacity: 0.68 }}
-        />
-        {/* gradient overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(7,17,12,0.25) 0%, rgba(7,17,12,0.5) 40%, rgba(7,17,12,0.92) 100%)",
-          }}
-        />
-        {/* ambient blobs */}
-        <div
-          className="pointer-events-none absolute -left-16 top-16 h-60 w-60 rounded-full"
-          style={{ background: "rgba(128,216,198,0.2)", filter: "blur(40px)" }}
-        />
-        <div
-          className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full"
-          style={{ background: "rgba(212,227,255,0.12)", filter: "blur(48px)" }}
-        />
-
-        <div className="relative z-10 mx-auto flex min-h-[520px] max-w-5xl flex-col px-4 py-6 md:px-8">
-          {/* top bar */}
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={onBack}
-              className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                cursor: "pointer",
-              }}
-            >
-              <ChevronLeft size={18} strokeWidth={2.5} />
-              Back
-            </button>
-
-            <button
-              className="md-icon-btn"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                color: "white",
-                width: 44,
-                height: 44,
-              }}
-              onClick={() => setShareOpen(true)}
-              aria-label="Share event"
-            >
-              <Share2 size={18} />
-            </button>
+          <div className="flex items-center gap-2" style={{ color: "rgba(255,255,255,0.9)" }}>
+            <Newspaper size={18} />
+            <span className="text-xs font-bold uppercase tracking-[0.26em]">Event Feature</span>
           </div>
 
-          {/* title & badges */}
-          <div className="mt-auto pt-16">
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {/* event type chip */}
+          <button
+            onClick={() => setShareOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.18)" }}
+          >
+            <Share2 size={15} />
+            Share
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-8 sm:px-6 lg:px-8">
+        <section className="relative">
+          <div className="relative overflow-hidden rounded-2xl" style={{ boxShadow: "0 24px 90px rgba(0,42,37,0.18)" }}>
+            <img
+              src={heroImage}
+              alt={event.title}
+              className="h-[340px] w-full object-cover sm:h-[460px] lg:h-[560px]"
+            />
+            <div
+              className="absolute inset-0"
+              style={{ background: "linear-gradient(180deg, rgba(0,42,37,0.1) 0%, rgba(0,42,37,0.22) 40%, rgba(0,42,37,0.78) 100%)" }}
+            />
+            <div className="absolute left-6 right-6 top-6 flex flex-wrap items-center gap-3 sm:left-8 sm:right-8">
               <span
-                className="rounded-full px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-white"
-                style={{
-                  background: "rgba(255,255,255,0.15)",
-                  border: "1px solid rgba(255,255,255,0.25)",
-                  backdropFilter: "blur(8px)",
-                }}
-              >
-                {eventType}
-              </span>
-              {/* status chip */}
-              <span
-                className="rounded-full px-3.5 py-1.5 text-xs font-semibold"
-                style={{
-                  background: status.bg,
-                  color: status.color,
-                  border: status.border,
-                  backdropFilter: "blur(8px)",
-                }}
+                className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em]"
+                style={{ background: status.bg, color: status.fg }}
               >
                 {status.label}
+              </span>
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em]"
+                style={{ background: "rgba(255,255,255,0.16)", color: "#FFFFFF" }}
+              >
+                <Tag size={11} />
+                {eventType}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className="relative z-10 mx-auto -mt-16 max-w-4xl rounded-2xl px-6 py-7 sm:-mt-24 sm:px-8 sm:py-9 lg:px-10"
+            style={{
+              background: "rgba(248,254,253,0.96)",
+              borderTop: `6px solid ${P.primary}`,
+              boxShadow: "0 20px 50px rgba(0,42,37,0.12)",
+            }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4" style={{ borderColor: P.outlineVariant }}>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: P.outline }}>
+                <span>{reportDate}</span>
+                {event.location ? <span>{event.location}</span> : null}
+                <span>{attendeeCount} attendees</span>
+              </div>
+              <span className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: P.primary }}>
+                Filed under event report
               </span>
             </div>
 
             <h1
-              className="mb-5 font-extrabold leading-tight text-white"
-              style={{ fontSize: "clamp(28px,5vw,52px)", lineHeight: 1.15 }}
+              className="mt-6 text-4xl font-black leading-[1.02] sm:text-5xl lg:text-6xl"
+              style={{ color: P.black, fontFamily: serif, letterSpacing: "-0.03em" }}
             >
               {event.title}
             </h1>
 
-            {/* quick meta pills */}
-            <div className="flex flex-wrap gap-2 text-sm text-white/85">
-              <span
-                className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
-                style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}
-              >
-                <CalendarDays size={14} />
-                {formatDate(event.startsAt || event.date)}
-              </span>
-              {event.location && (
-                <span
-                  className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
-                  style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}
-                >
-                  <MapPin size={14} />
-                  {event.location}
-                </span>
-              )}
-              <span
-                className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5"
-                style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)" }}
-              >
-                <Users size={14} />
-                {attendeeCount} attendees
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════
-          CONTENT AREA
-      ═══════════════════════════════════════════════ */}
-      <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 md:px-8 md:py-10">
-
-        {/* ─── SECTION 2 — Basic Information ─── */}
-        <section
-          className="rounded-[28px] p-6 md:p-8"
-          style={{
-            background: "var(--md-surface-container-low)",
-            border: "1px solid var(--md-outline-variant)",
-          }}
-        >
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <SectionHeader label="Overview" title="Event Information" />
-            <button
-              className="md-btn md-btn-filled hidden shrink-0 md:flex"
-              style={{ gap: 8 }}
-            >
-              <Ticket size={17} />
-              Register
-            </button>
-          </div>
-
-          {/* description */}
-          {(event.detailedDescription || event.shortDescription) && (
-            <p
-              className="md-body-large mb-6 max-w-3xl leading-relaxed"
-              style={{ color: "var(--md-on-surface-variant)" }}
-            >
-              {event.detailedDescription || event.shortDescription}
-            </p>
-          )}
-
-          {/* info cards grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <InfoCard icon={<CalendarDays size={17} />} label="Start date" value={formatDate(event.startsAt || event.date)} />
-            <InfoCard icon={<CalendarDays size={17} />} label="End date" value={formatDate(event.endsAt || event.endDate)} />
-            <InfoCard icon={<Clock3 size={17} />} label="Start time" value={formatTime(event.startsAt)} />
-            <InfoCard icon={<Clock3 size={17} />} label="End time" value={formatTime(event.endsAt)} />
-            <InfoCard icon={<MapPin size={17} />} label="Location" value={event.location || "Not specified"} />
-          </div>
-
-          {/* attendee highlight */}
-          <div
-            className="mt-4 flex items-center justify-between rounded-[20px] px-6 py-5"
-            style={{
-              background: "linear-gradient(135deg, var(--md-primary-container), var(--md-tertiary-container))",
-            }}
-          >
-            <div>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
               <p
-                className="md-label-small mb-1 uppercase tracking-widest"
-                style={{ color: "var(--md-on-primary-container)" }}
+                className="text-lg leading-9"
+                style={{ color: P.onSurfaceMuted, fontFamily: serif }}
               >
-                Total Attendees
+                {description}
               </p>
-              <p
-                className="md-display-small font-extrabold"
-                style={{ color: "var(--md-on-primary-container)" }}
-              >
-                {attendeeCount}
-              </p>
-            </div>
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-2xl"
-              style={{ background: "rgba(0,0,0,0.08)" }}
-            >
-              <Users size={28} style={{ color: "var(--md-on-primary-container)" }} />
+              <div className="border-t pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" style={{ borderColor: P.outlineVariant }}>
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: P.primary }}>
+                  At a glance
+                </p>
+                <div className="mt-3 space-y-2 text-sm leading-6" style={{ color: P.onSurfaceMuted }}>
+                  <p>Type: <span style={{ color: P.onSurface, fontWeight: 700 }}>{eventType}</span></p>
+                  <p>Status: <span style={{ color: P.onSurface, fontWeight: 700 }}>{status.label}</span></p>
+                  <p>Schedule: <span style={{ color: P.onSurface, fontWeight: 700 }}>{formatTime(event.startsAt)} - {formatTime(event.endsAt)}</span></p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ─── SECTION 3 — People ─── */}
-        {(organizers.length > 0 || participants.length > 0) && (
-          <section
-            className="rounded-[28px] p-6 md:p-8"
-            style={{
-              background: "var(--md-surface-container-low)",
-              border: "1px solid var(--md-outline-variant)",
-            }}
-          >
-            <SectionHeader label="People" title="Organizers & Participants" />
+        {/* ── Article body ────────────────────────────────────────────── */}
+        <div className="mt-14 grid gap-12 lg:grid-cols-[minmax(0,1fr)_280px]">
 
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-              {/* Organizers */}
-              <div>
-                <div className="mb-4 flex items-center gap-3">
-                  <h3 className="md-title-medium" style={{ color: "var(--md-on-surface)" }}>
-                    Organizers
-                  </h3>
+          {/* ── LEFT column ─────────────────────────────────────────── */}
+          <div>
+            <div className="mb-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="text-[16px] leading-8" style={{ color: P.onSurfaceMuted }}>
+                <p>
                   <span
-                    className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                    style={{
-                      background: "var(--md-secondary-container)",
-                      color: "var(--md-on-secondary-container)",
-                    }}
+                    className="mr-3 inline-block align-top text-6xl font-black leading-[0.8]"
+                    style={{ color: P.primary, fontFamily: serif }}
                   >
-                    {organizers.length}
+                    {description.charAt(0)}
                   </span>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {organizers.length > 0 ? (
-                    organizers.map((p) => <PersonCard key={p.id} person={p} />)
-                  ) : (
-                    <p className="md-body-medium rounded-[16px] p-4" style={{ color: "var(--md-on-surface-variant)", background: "var(--md-surface-container)" }}>
-                      No organizers listed.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Participants */}
-              <div>
-                <div className="mb-4 flex items-center gap-3">
-                  <h3 className="md-title-medium" style={{ color: "var(--md-on-surface)" }}>
-                    Participants
-                  </h3>
-                  <span
-                    className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                    style={{
-                      background: "var(--md-tertiary-container)",
-                      color: "var(--md-on-tertiary-container)",
-                    }}
-                  >
-                    {participants.length}
-                  </span>
-                  {participants.length > 0 && (
-                    <span
-                      className="ml-auto text-xs"
-                      style={{ color: "var(--md-on-surface-variant)" }}
-                    >
-                      Total: {participants.length}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-3">
-                  {participants.length > 0 ? (
-                    participants.slice(0, 6).map((p) => <PersonCard key={p.id} person={p} />)
-                  ) : (
-                    <p className="md-body-medium rounded-[16px] p-4" style={{ color: "var(--md-on-surface-variant)", background: "var(--md-surface-container)" }}>
-                      No participants listed.
-                    </p>
-                  )}
-                  {participants.length > 6 && (
-                    <p
-                      className="md-label-medium text-center"
-                      style={{ color: "var(--md-primary)" }}
-                    >
-                      +{participants.length - 6} more participants
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ─── SECTION 4 — Photo Gallery ─── */}
-        {event.gallery && event.gallery.length > 0 && (
-          <section
-            className="rounded-[28px] p-6 md:p-8"
-            style={{
-              background: "var(--md-surface-container-low)",
-              border: "1px solid var(--md-outline-variant)",
-            }}
-          >
-            <SectionHeader label="Photo Gallery" title="Moments from the Event" />
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {event.gallery.map((img, i) => (
-                <button
-                  key={`${img}-${i}`}
-                  type="button"
-                  onClick={() => setZoomImg(img)}
-                  className="group relative overflow-hidden rounded-[20px] text-left"
-                  style={{ aspectRatio: "4/3", cursor: "zoom-in" }}
-                >
-                  <img
-                    src={img}
-                    alt={`${event.title} — photo ${i + 1}`}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
-                    style={{ transition: "transform 500ms ease" }}
-                  />
-                  {/* overlay on hover */}
-                  <div
-                    className="absolute inset-0 flex flex-col items-end justify-between p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                    style={{ background: "linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.68) 100%)" }}
-                  >
-                    <div
-                      className="flex h-9 w-9 items-center justify-center rounded-full"
-                      style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }}
-                    >
-                      <ZoomIn size={16} className="text-white" />
-                    </div>
-                    <span className="text-xs font-medium text-white/90">Photo {i + 1}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ─── SECTION 5 — Countdown (Upcoming only) ─── */}
-        {isUpcoming && (
-          <section
-            className="relative overflow-hidden rounded-[28px] p-6 md:p-8"
-            style={{
-              background: "linear-gradient(135deg, #0a1f16 0%, #102e22 50%, #0d2030 100%)",
-              color: "white",
-            }}
-          >
-            {/* decorative blobs */}
-            <div
-              className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full"
-              style={{ background: "rgba(128,216,198,0.12)", filter: "blur(32px)" }}
-            />
-            <div
-              className="pointer-events-none absolute -bottom-8 -left-8 h-40 w-40 rounded-full"
-              style={{ background: "rgba(212,227,255,0.08)", filter: "blur(28px)" }}
-            />
-
-            <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="mb-1 flex items-center gap-2">
-                  <Timer size={18} style={{ color: "rgba(128,216,198,0.8)" }} />
-                  <p
-                    className="md-label-medium uppercase tracking-widest"
-                    style={{ color: "rgba(128,216,198,0.8)" }}
-                  >
-                    Countdown
-                  </p>
-                </div>
-                <h2 className="md-headline-small mb-1">Time Until Event Starts</h2>
-                <p className="md-body-medium" style={{ color: "rgba(255,255,255,0.6)" }}>
-                  Based on the scheduled start time
+                  {description.slice(1)}
                 </p>
               </div>
-
-              <div className="grid grid-cols-3 gap-3 md:min-w-[340px]">
-                <CountdownBox value={countdown.days} label="Days" />
-                <CountdownBox value={countdown.hours} label="Hours" />
-                <CountdownBox value={countdown.minutes} label="Minutes" />
+              <div
+                className="border-l pl-5"
+                style={{ borderColor: P.outlineVariant }}
+              >
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em]" style={{ color: P.primary }}>
+                  Editorial Note
+                </p>
+                <p className="mt-3 text-sm leading-7" style={{ color: P.onSurfaceMuted }}>
+                  This event page is arranged as a published report: headline, facts, roster,
+                  documentation, and timing, in one continuous reading flow.
+                </p>
               </div>
             </div>
-          </section>
-        )}
+
+            <Divider />
+
+            {/* ── Basic information ───────────────────────────────────── */}
+            <section className="mt-8">
+              <SectionLabel>
+                <BookOpen size={12} className="inline-block mr-1.5 mb-0.5" />
+                Event Facts
+              </SectionLabel>
+
+              <FactRow icon={<CalendarDays size={15} />} label="Start date" value={formatDate(event.startsAt || event.date)} />
+              <FactRow icon={<CalendarDays size={15} />} label="End date" value={formatDate(event.endsAt || event.endDate)} />
+              <FactRow icon={<Clock3 size={15} />} label="Start time" value={formatTime(event.startsAt)} />
+              <FactRow icon={<Clock3 size={15} />} label="End time" value={formatTime(event.endsAt)} />
+              <FactRow icon={<MapPin size={15} />} label="Location" value={event.location || "Not specified"} />
+              <FactRow icon={<Users size={15} />} label="Total attendees" value={`${attendeeCount} attendees`} />
+            </section>
+
+            {/* ── People ─────────────────────────────────────────────── */}
+            <section className="mt-10">
+              <Divider />
+              <div className="mt-8">
+                <SectionLabel>Organizers & Participants</SectionLabel>
+
+                {organizers.length > 0 && (
+                  <div className="mb-10">
+                    <p className="text-sm font-bold mb-1" style={{ color: P.onSurface }}>
+                      Organizers
+                      <span
+                        className="ml-2 px-2 py-0.5 rounded-full text-[11px]"
+                        style={{ background: P.primaryContainer, color: P.primary }}
+                      >
+                        {organizers.length}
+                      </span>
+                    </p>
+                    {organizers.map((p) => <PersonCard key={p.id} person={p} organizer />)}
+                  </div>
+                )}
+
+                {participants.length > 0 && (
+                  <div>
+                    <p className="text-sm font-bold mb-1" style={{ color: P.onSurface }}>
+                      Participants
+                      <span
+                        className="ml-2 px-2 py-0.5 rounded-full text-[11px]"
+                        style={{ background: P.primaryContainer, color: P.primary }}
+                      >
+                        {participants.length}
+                      </span>
+                    </p>
+                    {participants.map((p) => <PersonCard key={p.id} person={p} />)}
+                  </div>
+                )}
+
+                {!organizers.length && !participants.length && (
+                  <p className="text-sm leading-7" style={{ color: P.onSurfaceMuted }}>
+                    No people were listed for this event.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* ── Photo gallery ──────────────────────────────────────── */}
+            {event.gallery?.length ? (
+              <section className="mt-10">
+                <Divider />
+                <div className="mt-8">
+                  <SectionLabel>Photo Gallery</SectionLabel>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12">
+                    {event.gallery.map((img, i) => {
+                      const wide = i === 0 || i % 5 === 0;
+                      const tall = i % 4 === 2;
+                      return (
+                        <button
+                          key={`${img}-${i}`}
+                          type="button"
+                          onClick={() => setZoomImg(img)}
+                          className={`group relative overflow-hidden text-left ${wide ? "lg:col-span-7" : "lg:col-span-5"}`}
+                          style={{ minHeight: wide ? 320 : tall ? 280 : 210, borderRadius: 16 }}
+                        >
+                          <img
+                            src={img}
+                            alt={`${event.title} photo ${i + 1}`}
+                            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div
+                            className="absolute inset-0"
+                            style={{ background: "linear-gradient(180deg, transparent 50%, rgba(0,42,37,0.65))" }}
+                          />
+                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between px-4 py-3">
+                            <p className="text-xs font-semibold text-white/80">Photo {i + 1}</p>
+                            <span
+                              className="flex h-8 w-8 items-center justify-center rounded-full"
+                              style={{ background: "rgba(255,255,255,0.18)" }}
+                            >
+                              <ZoomIn size={15} className="text-white" />
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {/* ── Countdown timer ────────────────────────────────────── */}
+            {event.isUpcoming ? (
+              <section className="mt-10">
+                <Divider />
+                <div className="mt-8">
+                  <SectionLabel>Event Countdown</SectionLabel>
+
+                  <div
+                    className="rounded-2xl px-6 py-8 sm:px-10"
+                    style={{
+                      background: `linear-gradient(135deg, ${P.primary} 0%, ${P.primaryDark} 100%)`,
+                      boxShadow: `0 8px 32px rgba(0,106,96,0.30)`,
+                    }}
+                  >
+                    <p className="text-sm leading-7 mb-8" style={{ color: "rgba(255,255,255,0.7)" }}>
+                      Time remaining until the event begins. Updates automatically.
+                    </p>
+                    <div className="grid grid-cols-3 gap-6">
+                      <CountdownBlock value={countdown.days} label="Days" />
+                      <CountdownBlock value={countdown.hours} label="Hours" />
+                      <CountdownBlock value={countdown.minutes} label="Minutes" />
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+          </div>
+
+          {/* ── RIGHT sidebar ─────────────────────────────────────────── */}
+          <aside className="space-y-8 lg:sticky lg:top-6">
+            {/* ── Event brief card ───────────────────────────────── */}
+            <div className="rounded-2xl border-t-4 pt-4" style={{ borderColor: P.primary, background: P.surfaceLow }}>
+              <div className="p-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em]" style={{ color: P.primary }}>
+                  Event Brief
+                </p>
+                <h3 className="mt-2 text-2xl font-black leading-tight" style={{ color: P.black, fontFamily: serif }}>
+                  Snapshot
+                </h3>
+                <div className="mt-5 space-y-4 border-t pt-4 text-sm" style={{ borderColor: P.outlineVariant }}>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: P.outline }}>Category</p>
+                    <p className="mt-1 font-semibold" style={{ color: P.onSurface }}>{eventType}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: P.outline }}>Status</p>
+                    <p className="mt-1 font-semibold" style={{ color: P.onSurface }}>{status.label}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: P.outline }}>Location</p>
+                    <p className="mt-1 leading-6 font-semibold" style={{ color: P.onSurface }}>{event.location || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: P.outline }}>Attendance</p>
+                    <p className="mt-1 font-semibold" style={{ color: P.onSurface }}>{attendeeCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: P.outline }}>Published date</p>
+                    <p className="mt-1 leading-6 font-semibold" style={{ color: P.onSurface }}>{reportDate}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Share button ───────────────────────────────────── */}
+            <button
+              onClick={() => setShareOpen(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold transition-opacity hover:opacity-90"
+              style={{ background: P.primary, color: "#FFFFFF" }}
+            >
+              <Share2 size={16} />
+              Share this report
+            </button>
+          </aside>
+        </div>
       </div>
 
-      {/* ─── bottom CTA bar (mobile) ─── */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 flex gap-3 p-4 md:hidden"
-        style={{
-          background: "var(--md-surface-container-high)",
-          borderRadius: "24px 24px 0 0",
-          boxShadow: "0 -4px 24px rgba(0,0,0,0.10)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <button
-          className="md-btn md-btn-filled flex-1"
-          style={{ height: 52 }}
-        >
-          <Ticket size={17} />
-          Register
-        </button>
-        <button
-          className="md-icon-btn md-icon-btn-tonal"
-          style={{ width: 52, height: 52 }}
-          onClick={() => setShareOpen(true)}
-          aria-label="Share event"
-        >
-          <Share2 size={18} />
-        </button>
-      </div>
-
-      {/* ─── Image lightbox ─── */}
-      {zoomImg && (
+      {/* ── Image zoom overlay ──────────────────────────────────────── */}
+      {zoomImg ? (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <button
             className="absolute inset-0"
-            style={{ background: "rgba(4,12,9,0.88)", cursor: "zoom-out" }}
+            style={{ background: "rgba(0,42,37,0.92)" }}
             onClick={() => setZoomImg(null)}
             aria-label="Close image preview"
           />
           <div className="relative z-10 w-full max-w-5xl">
             <button
-              className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full text-white"
-              style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", cursor: "pointer" }}
+              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full text-white"
+              style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}
               onClick={() => setZoomImg(null)}
-              aria-label="Close image preview"
+              aria-label="Close"
             >
               <CloseIcon size={18} />
             </button>
             <img
-              src={zoomImg}
-              alt="Selected event photo"
-              className="max-h-[88vh] w-full rounded-[28px] object-contain"
+              src={zoomImg ?? undefined}
+              alt="Selected event visual"
+              className="max-h-[88vh] w-full rounded-2xl object-contain"
             />
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* ─── Share dialog ─── */}
-      {shareOpen && (
+      {/* ── Share modal ─────────────────────────────────────────────── */}
+      {shareOpen ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
             className="absolute inset-0"
-            style={{ background: "rgba(0,0,0,0.36)", backdropFilter: "blur(4px)" }}
+            style={{ background: "rgba(0,0,0,0.42)", backdropFilter: "blur(4px)" }}
             onClick={() => setShareOpen(false)}
           />
+
           <div
-            className="md-dialog relative w-full max-w-[480px]"
-            style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.24)" }}
+            className="relative z-10 w-full max-w-[500px] rounded-2xl overflow-hidden"
+            style={{
+              background: P.surface,
+              border: `1px solid ${P.outlineVariant}`,
+              boxShadow: "0 24px 80px rgba(0,42,37,0.28)",
+            }}
           >
-            {/* header */}
-            <div className="mb-4 flex items-center justify-between">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4" style={{ background: P.primary }}>
               <div>
-                <p className="md-label-small mb-0.5 uppercase tracking-widest" style={{ color: "var(--md-primary)" }}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: P.primaryLight }}>
                   Share
                 </p>
-                <h3 className="md-title-large" style={{ color: "var(--md-on-surface)" }}>
-                  Share this event
-                </h3>
+                <h3 className="mt-0.5 text-lg font-black text-white">Share this event</h3>
               </div>
               <button
-                className="md-icon-btn"
+                className="flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-80"
+                style={{ background: "rgba(255,255,255,0.15)", color: "#FFFFFF" }}
                 onClick={() => setShareOpen(false)}
-                aria-label="Close share dialog"
+                aria-label="Close"
               >
-                <CloseIcon size={20} />
+                <CloseIcon size={18} />
               </button>
             </div>
 
-            <div style={{ height: 1, background: "var(--md-outline-variant)", margin: "0 -4px 20px" }} />
-
-            {/* event preview */}
-            <div
-              className="mb-5 flex items-center gap-4 rounded-[16px] p-4"
-              style={{ background: "var(--md-surface-container)" }}
-            >
-              <img
-                src={heroImage}
-                className="h-14 w-14 flex-shrink-0 rounded-[12px] object-cover"
-                alt={event.title}
-              />
-              <div className="min-w-0">
-                <p className="md-title-small truncate" style={{ color: "var(--md-on-surface)" }}>
-                  {event.title}
-                </p>
-                <p className="md-body-small mt-0.5" style={{ color: "var(--md-on-surface-variant)" }}>
-                  {eventType}
-                </p>
+            <div className="px-6 py-5">
+              {/* Preview */}
+              <div
+                className="flex items-center gap-3 rounded-xl p-3 mb-5"
+                style={{ background: P.surfaceLow, border: `1px solid ${P.outlineVariant}` }}
+              >
+                <img
+                  src={heroImage}
+                  className="h-14 w-14 rounded-lg flex-shrink-0 object-cover"
+                  alt={event.title}
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: P.onSurface }}>{event.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: P.onSurfaceMuted }}>{eventType}</p>
+                </div>
               </div>
-            </div>
 
-            {/* share options */}
-            <div className="mb-5 grid grid-cols-3 gap-3">
-              {shareOptions.map((opt) => (
-                <a
-                  key={opt.name}
-                  href={opt.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-2"
-                >
-                  <div
-                    className="flex h-14 w-14 items-center justify-center rounded-[18px] text-white"
-                    style={{ background: opt.color }}
+              {/* Social buttons */}
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                {shareOptions.map((opt) => (
+                  <a
+                    key={opt.name}
+                    href={opt.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-2 rounded-xl py-4 transition-opacity hover:opacity-85"
+                    style={{ background: P.surfaceLow, border: `1px solid ${P.outlineVariant}` }}
                   >
-                    {opt.icon}
-                  </div>
-                  <span className="md-label-small" style={{ color: "var(--md-on-surface-variant)" }}>
-                    {opt.name}
-                  </span>
-                </a>
-              ))}
-            </div>
+                    <div
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-white"
+                      style={{ background: opt.color }}
+                    >
+                      {opt.icon}
+                    </div>
+                    <span className="text-[11px] font-semibold" style={{ color: P.onSurfaceMuted }}>
+                      {opt.name}
+                    </span>
+                  </a>
+                ))}
+              </div>
 
-            {/* copy link */}
-            <label className="md-label-small mb-2 block" style={{ color: "var(--md-on-surface-variant)" }}>
-              Event link
-            </label>
-            <div
-              className="flex items-center gap-2 rounded-[14px] p-1.5"
-              style={{ background: "var(--md-surface-container)", border: "1px solid var(--md-outline-variant)" }}
-            >
-              <input
-                type="text"
-                readOnly
-                value={eventUrl}
-                className="flex-1 bg-transparent px-2 py-1 outline-none text-sm"
-                style={{ color: "var(--md-on-surface-variant)" }}
-              />
-              <button
-                onClick={handleCopy}
-                className="md-btn md-btn-tonal"
-                style={{ height: 36, padding: "0 16px", fontSize: 13 }}
+              {/* Copy link */}
+              <label className="block text-[11px] font-bold uppercase tracking-[0.22em] mb-2" style={{ color: P.outline }}>
+                Event link
+              </label>
+              <div
+                className="flex items-center gap-2 rounded-xl overflow-hidden"
+                style={{ border: `1px solid ${P.outlineVariant}`, background: P.surfaceLow }}
               >
-                {copied ? <Check size={15} /> : <Copy size={15} />}
-                {copied ? "Copied!" : "Copy"}
-              </button>
+                <input
+                  type="text"
+                  value={eventUrl}
+                  readOnly
+                  className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none"
+                  style={{ color: P.onSurfaceMuted }}
+                />
+                <button
+                  onClick={handleCopy}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold rounded-r-xl transition-opacity hover:opacity-90"
+                  style={{ background: P.primary, color: "#FFFFFF", flexShrink: 0 }}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
-    </div>
+      ) : null
+      }
+    </div >
   );
 };
 
