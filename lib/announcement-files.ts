@@ -1,6 +1,14 @@
 type AnnouncementRow = {
   id: string;
-  announcement_files?: AnnouncementFileRow[];
+  announcement_files?: AnnouncementFileInputRow[] | null;
+};
+
+type AnnouncementFileInputRow = {
+  id?: string;
+  announcement_id?: string;
+  file_url?: string | null;
+  file_name?: string | null;
+  file_type?: 'pdf' | 'image' | null;
 };
 
 type AnnouncementFileRow = {
@@ -18,21 +26,46 @@ type SupabaseLikeClient = {
         order: (
           column: string,
           options: { ascending: boolean }
-        ) => Promise<{ data: AnnouncementFileRow[] | null; error: { message: string } | null }>;
+        ) => PromiseLike<{ data: AnnouncementFileRow[] | null; error: { message: string } | null }>;
       };
     };
   };
 };
 
+type AnnouncementWithFiles<T extends AnnouncementRow> = T & {
+  announcement_files: AnnouncementFileRow[];
+};
+
+function normalizeExistingFiles(
+  announcementId: string,
+  files?: AnnouncementFileInputRow[] | null,
+): AnnouncementFileRow[] {
+  return (files ?? []).map((file) => ({
+    id: file.id,
+    announcement_id: file.announcement_id ?? announcementId,
+    file_url: file.file_url ?? null,
+    file_name: file.file_name ?? null,
+    file_type: file.file_type ?? null,
+  }));
+}
+
 export async function hydrateAnnouncementFiles<T extends AnnouncementRow>(
   supabase: SupabaseLikeClient,
   announcements: T[],
   options?: { includeId?: boolean }
-): Promise<T[]> {
-  if (!announcements.length) return announcements;
+) : Promise<AnnouncementWithFiles<T>[]> {
+  if (!announcements.length) return [];
 
   const announcementIds = announcements.map((announcement) => announcement.id).filter(Boolean);
-  if (!announcementIds.length) return announcements;
+  if (!announcementIds.length) {
+    return announcements.map((announcement) => ({
+      ...announcement,
+      announcement_files: normalizeExistingFiles(
+        announcement.id,
+        announcement.announcement_files,
+      ),
+    }));
+  }
 
   const columns = options?.includeId
     ? 'id, announcement_id, file_url, file_name, file_type'
@@ -48,7 +81,10 @@ export async function hydrateAnnouncementFiles<T extends AnnouncementRow>(
     console.error(error);
     return announcements.map((announcement) => ({
       ...announcement,
-      announcement_files: announcement.announcement_files ?? [],
+      announcement_files: normalizeExistingFiles(
+        announcement.id,
+        announcement.announcement_files,
+      ),
     }));
   }
 
@@ -63,6 +99,8 @@ export async function hydrateAnnouncementFiles<T extends AnnouncementRow>(
 
   return announcements.map((announcement) => ({
     ...announcement,
-    announcement_files: filesByAnnouncementId.get(announcement.id) ?? announcement.announcement_files ?? [],
+    announcement_files:
+      filesByAnnouncementId.get(announcement.id) ??
+      normalizeExistingFiles(announcement.id, announcement.announcement_files),
   }));
 }

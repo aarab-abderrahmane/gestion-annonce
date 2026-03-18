@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
-import { normalizeAnnouncement, normalizeEvent, normalizeNews } from '@/lib/portal-data';
+import {
+  normalizeAnnouncement,
+  normalizeEvent,
+  normalizeNews,
+  type PortalAnnouncementRow,
+} from '@/lib/portal-data';
 import type { SearchResultItem, SearchResultType } from '@/types';
 
 type SearchFilters = {
@@ -91,7 +96,10 @@ async function fallbackSearch(supabase: SupabaseClient, filters: Required<Search
       .order('starts_at', { ascending: false }),
   ]);
 
-  const announcementsWithFiles = await hydrateAnnouncementFiles(supabase as never, announcementRows ?? []);
+  const announcementsWithFiles = await hydrateAnnouncementFiles(
+    supabase as never,
+    (announcementRows ?? []) as PortalAnnouncementRow[],
+  );
   const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const news = (newsRows ?? []).map(normalizeNews);
   const events = (eventRows ?? []).map(normalizeEvent);
@@ -139,7 +147,7 @@ async function fallbackSearch(supabase: SupabaseClient, filters: Required<Search
           title: item.title,
           excerpt: item.content,
           date: item.publishDate,
-          badge: item.categories[0] ?? item.category,
+          badge: item.categories?.[0] ?? item.category,
           href: `/announcements/${encodeURIComponent(item.slug)}`,
         }))
     );

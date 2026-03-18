@@ -43,8 +43,8 @@
       --md-shape-xl: 28px;
       --md-shape-full: 9999px;
       /* Typography */
-      --md-font-brand: 'Tajawal', sans-serif;
-      --md-font-plain: 'Roboto', 'Tajawal', sans-serif;
+      --md-font-brand: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --md-font-plain: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     *,

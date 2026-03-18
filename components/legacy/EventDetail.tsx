@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import type { Event } from "@/types";
 import {
@@ -20,6 +21,7 @@ import {
   Tag,
   BookOpen,
 } from "lucide-react";
+import { IMAGE_BLUR_DATA_URL } from "@/lib/utils";
 
 interface EventDetailProps {
   event: Event;
@@ -134,16 +136,22 @@ function FactRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 }
 
 function PersonCard({ person, organizer }: { person: Person; organizer?: boolean }) {
+  const avatarSrc = person.image || PERSON_FALLBACK;
+
   return (
     <div
       className="flex items-center gap-3 py-3"
       style={{ borderBottom: `1px solid ${P.outlineVariant}` }}
     >
-      <img
-        src={person.image || PERSON_FALLBACK}
+      <Image
+        src={avatarSrc}
         alt={person.name}
+        width={48}
+        height={48}
+        loading="lazy"
+        placeholder="blur"
+        blurDataURL={PERSON_FALLBACK}
         className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
-        onError={(e) => { e.currentTarget.src = PERSON_FALLBACK; }}
         style={{ border: `2px solid ${P.primaryContainer}` }}
       />
       <div className="min-w-0 flex-1">
@@ -268,11 +276,16 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
 
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-8 sm:px-6 lg:px-8">
         <section className="relative">
-          <div className="relative overflow-hidden rounded-2xl" style={{ boxShadow: "0 24px 90px rgba(0,42,37,0.18)" }}>
-            <img
+          <div className="relative h-[340px] overflow-hidden rounded-2xl sm:h-[460px] lg:h-[560px]" style={{ boxShadow: "0 24px 90px rgba(0,42,37,0.18)" }}>
+            <Image
               src={heroImage}
               alt={event.title}
-              className="h-[340px] w-full object-cover sm:h-[460px] lg:h-[560px]"
+              fill
+              sizes="100vw"
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL={IMAGE_BLUR_DATA_URL}
+              className="object-cover"
             />
             <div
               className="absolute inset-0"
@@ -453,9 +466,14 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
                           className={`group relative overflow-hidden text-left ${wide ? "lg:col-span-7" : "lg:col-span-5"}`}
                           style={{ minHeight: wide ? 320 : tall ? 280 : 210, borderRadius: 16 }}
                         >
-                          <img
+                          <Image
                             src={img}
                             alt={`${event.title} photo ${i + 1}`}
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 50vw"
+                            loading="lazy"
+                            placeholder="blur"
+                            blurDataURL={IMAGE_BLUR_DATA_URL}
                             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
                           <div
@@ -574,9 +592,14 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
             >
               <CloseIcon size={18} />
             </button>
-            <img
-              src={zoomImg ?? undefined}
+            <Image
+              src={zoomImg}
               alt="Selected event visual"
+              width={1600}
+              height={1200}
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL={IMAGE_BLUR_DATA_URL}
               className="max-h-[88vh] w-full rounded-2xl object-contain"
             />
           </div>
@@ -624,10 +647,15 @@ const EventDetail: React.FC<EventDetailProps> = ({ event, onBack }) => {
                 className="flex items-center gap-3 rounded-xl p-3 mb-5"
                 style={{ background: P.surfaceLow, border: `1px solid ${P.outlineVariant}` }}
               >
-                <img
+                <Image
                   src={heroImage}
-                  className="h-14 w-14 rounded-lg flex-shrink-0 object-cover"
                   alt={event.title}
+                  width={56}
+                  height={56}
+                  loading="lazy"
+                  placeholder="blur"
+                  blurDataURL={IMAGE_BLUR_DATA_URL}
+                  className="h-14 w-14 rounded-lg flex-shrink-0 object-cover"
                 />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate" style={{ color: P.onSurface }}>{event.title}</p>

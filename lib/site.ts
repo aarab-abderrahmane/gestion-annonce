@@ -1,4 +1,9 @@
+import type { Metadata } from 'next';
+
 const defaultUrl = 'https://gestion-annonces.example.com';
+export const SITE_NAME = 'gestion-annonces';
+export const SCHOOL_NAME = 'ISTA Ait Melloul';
+export const SITE_TITLE = `${SITE_NAME} | ${SCHOOL_NAME}`;
 
 export function getSiteUrl() {
   const raw =
@@ -17,4 +22,37 @@ export function getSiteUrl() {
 
 export function absoluteUrl(pathname = '/') {
   return new URL(pathname, `${getSiteUrl()}/`).toString();
+}
+
+type PublicMetadataOptions = {
+  title: string;
+  description: string;
+  path?: string;
+  type?: 'website' | 'article';
+  images?: string[];
+};
+
+export function buildPublicMetadata({
+  title,
+  description,
+  path = '/',
+  type = 'website',
+  images,
+}: PublicMetadataOptions): Metadata {
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: absoluteUrl(path),
+    },
+    openGraph: {
+      title,
+      description,
+      url: absoluteUrl(path),
+      siteName: SITE_TITLE,
+      locale: 'ar_MA',
+      type,
+      images,
+    },
+  };
 }

@@ -12,14 +12,18 @@ type AnnouncementListRow = {
   title: string;
   status: string;
   published_at: string;
-  divisions?: { name?: string | null } | null;
-  announcement_files?: Array<{ file_url: string | null }> | null;
+  divisions?: { name?: string | null } | Array<{ name?: string | null }> | null;
   announcement_category_links?: AnnouncementCategoryLink[] | null;
 };
 
 function getCategoryRecord(record?: AnnouncementCategory | AnnouncementCategory[] | null) {
   if (Array.isArray(record)) return record[0];
   return record;
+}
+
+function getDivisionName(record?: AnnouncementListRow['divisions']) {
+  if (Array.isArray(record)) return record[0]?.name ?? '';
+  return record?.name ?? '';
 }
 
 export default async function AnnouncementsAdminPage() {
@@ -47,12 +51,15 @@ export default async function AnnouncementsAdminPage() {
   if (divisionsError) console.error(divisionsError);
   if (categoriesError) console.error(categoriesError);
 
-  const announcementsWithFiles = await hydrateAnnouncementFiles(supabase, announcements ?? []);
+  const announcementsWithFiles = await hydrateAnnouncementFiles(
+    supabase as never,
+    (announcements ?? []) as AnnouncementListRow[],
+  );
 
-  const rows = announcementsWithFiles.map((item: AnnouncementListRow) => ({
+  const rows = announcementsWithFiles.map((item) => ({
     id: item.id,
     title: item.title,
-    divisionName: item.divisions?.name ?? '',
+    divisionName: getDivisionName(item.divisions),
     status: item.status,
     publishedAt: item.published_at,
     files: item.announcement_files ?? [],

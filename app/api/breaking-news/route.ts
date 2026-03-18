@@ -1,43 +1,29 @@
 import { cachedJson, json, requireAuthenticatedUser } from '@/app/api/_utils'
 import { getSupabaseRouteClient } from '@/app/api/_utils'
 
-function buildAnnouncementPayload(body: Record<string, unknown>) {
+function buildBreakingNewsPayload(body: Record<string, unknown>) {
   return {
     title: typeof body.title === 'string' ? body.title.trim() : undefined,
     slug: typeof body.slug === 'string' ? body.slug.trim() : undefined,
-    description:
-      typeof body.description === 'string' ? body.description.trim() : null,
-    division_id:
-      typeof body.division_id === 'string' ? body.division_id : undefined,
-    group_id: typeof body.group_id === 'string' && body.group_id ? body.group_id : null,
+    level:
+      body.level === 'dangerous' || body.level === 'warning'
+        ? body.level
+        : 'urgent',
     status: body.status === 'published' ? 'published' : 'draft',
-    published_at:
-      typeof body.published_at === 'string' && body.published_at
-        ? body.published_at
-        : null,
     expires_at:
       typeof body.expires_at === 'string' && body.expires_at
         ? body.expires_at
-        : null,
+        : undefined,
   }
 }
 
 export async function GET() {
   const supabase = await getSupabaseRouteClient()
   const { data, error } = await supabase
-    .from('announcements')
-    .select(`
-      id, title, slug, description, division_id, group_id, status, published_at, expires_at,
-      divisions(id, name, slug),
-      groups(id, name, slug, division_id),
-      announcement_files(id, file_url, file_name, file_type),
-      announcement_category_links(
-        category_id,
-        announcement_categories(id, name, slug)
-      )
-    `)
+    .from('breaking_news')
+    .select('id, title, slug, level, status, created_at, expires_at')
     .eq('status', 'published')
-    .order('published_at', { ascending: false })
+    .order('created_at', { ascending: false })
 
   if (error) {
     return json({ error: error.message }, { status: 500 })
@@ -51,17 +37,17 @@ export async function POST(request: Request) {
   if (auth.response) return auth.response
 
   const body = (await request.json()) as Record<string, unknown>
-  const payload = buildAnnouncementPayload(body)
+  const payload = buildBreakingNewsPayload(body)
 
-  if (!payload.title || !payload.slug || !payload.division_id) {
+  if (!payload.title || !payload.slug || !payload.expires_at) {
     return json(
-      { error: 'title, slug and division_id are required' },
+      { error: 'title, slug and expires_at are required' },
       { status: 400 }
     )
   }
 
   const { data, error } = await auth.supabase
-    .from('announcements')
+    .from('breaking_news')
     .insert(payload)
     .select()
     .single()

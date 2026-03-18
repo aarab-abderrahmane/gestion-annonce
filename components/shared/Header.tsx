@@ -29,7 +29,10 @@ export default function Header() {
     () =>
       items.map((item) => ({
         ...item,
-        active: item.href === "/events" ? pathname.startsWith("/events") : item.href === pathname,
+        active:
+          item.href === "/"
+            ? pathname === "/"
+            : pathname === item.href || pathname.startsWith(`${item.href}/`),
       })),
     [pathname],
   );
@@ -52,7 +55,7 @@ export default function Header() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
                 <Building2 size={18} />
               </span>
-              <span className="md-title-medium hidden sm:block">مؤسسة التطوير</span>
+              <span className="md-title-medium hidden sm:block">ISTA Ait Melloul</span>
             </Link>
           </div>
 
@@ -73,8 +76,8 @@ export default function Header() {
             ))}
           </nav>
 
-          <div className="hidden h-8 w-8 items-center justify-center rounded-full md:flex" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
-            م
+          <div className="hidden h-8 min-w-8 items-center justify-center rounded-full px-2 md:flex" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
+            <span className="md-label-medium font-bold">ISTA</span>
           </div>
         </div>
       </header>
@@ -88,7 +91,7 @@ export default function Header() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
                   <Building2 size={18} />
                 </span>
-                <span className="md-title-medium">مؤسسة التطوير</span>
+                <span className="md-title-medium">ISTA Ait Melloul</span>
               </div>
               <button className="md-icon-btn" onClick={() => setIsDrawerOpen(false)} aria-label="إغلاق القائمة">
                 <X size={24} />

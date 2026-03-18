@@ -4,6 +4,24 @@ import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
 import { createClient } from '@/lib/supabase/server';
 
 type AnnouncementCategoryLink = { category_id: string };
+type EditableAnnouncementRow = {
+  id: string;
+  title: string | null;
+  slug: string | null;
+  description: string | null;
+  division_id: string | null;
+  group_id: string | null;
+  expires_at: string | null;
+  status: string | null;
+  announcement_category_links?: AnnouncementCategoryLink[] | null;
+  announcement_files?: Array<{
+    id?: string;
+    announcement_id: string;
+    file_url: string | null;
+    file_name: string | null;
+    file_type: 'pdf' | 'image' | null;
+  }>;
+};
 
 export default async function EditAnnouncementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,7 +55,11 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
 
   if (!announcement) notFound();
 
-  const [announcementWithFiles] = await hydrateAnnouncementFiles(supabase, [announcement], { includeId: true });
+  const [announcementWithFiles] = await hydrateAnnouncementFiles(
+    supabase as never,
+    [announcement as EditableAnnouncementRow],
+    { includeId: true },
+  );
 
   return (
     <div className="space-y-6">
@@ -60,7 +82,14 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
           category_ids: (announcement.announcement_category_links ?? []).map((link: AnnouncementCategoryLink) => link.category_id),
           expires_at: announcement.expires_at ? new Date(announcement.expires_at).toISOString().slice(0, 10) : '',
           status: (announcement.status as 'draft' | 'published') ?? 'draft',
-          files: announcementWithFiles.announcement_files ?? [],
+          files: (announcementWithFiles.announcement_files ?? [])
+            .filter((file) => file.file_url)
+            .map((file) => ({
+              id: file.id,
+              file_url: file.file_url as string,
+              file_name: file.file_name,
+              file_type: (file.file_type as 'pdf' | 'image') ?? 'pdf',
+            })),
         }}
       />
     </div>

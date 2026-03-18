@@ -1,10 +1,12 @@
 "use client";
 
 
+import Image from 'next/image';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Download, FileText, Check, X, Paperclip, Eye, FileJson, Filter, ChevronDown } from 'lucide-react';
 import { Announcement } from '@/types';
 import Pagination from '@/components/shared/Pagination';
+import { IMAGE_BLUR_DATA_URL } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -24,7 +26,18 @@ const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
   const getFileIcon = (fileName: string, url: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
     if (isImage(fileName) && url !== '#') {
-      return <img src={url} className="w-full h-full object-cover rounded" alt="Thumbnail" />;
+      return (
+        <Image
+          src={url}
+          alt="Thumbnail"
+          width={48}
+          height={48}
+          loading="lazy"
+          placeholder="blur"
+          blurDataURL={IMAGE_BLUR_DATA_URL}
+          className="h-full w-full object-cover rounded"
+        />
+      );
     }
     if (ext === 'pdf') return <FileText size={22} style={{ color: 'var(--md-error)' }} />;
     if (ext === 'docx' || ext === 'doc') return <FileText size={22} style={{ color: '#005FB0' }} />;
@@ -166,10 +179,15 @@ const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
               <div style={{ width: 40 }} />
             </div>
             <div className="flex-1 flex items-center justify-center p-4">
-              <img
+              <Image
                 src={previewImage}
-                className="max-w-full max-h-full object-contain rounded-[16px]"
                 alt="معاينة"
+                width={1200}
+                height={900}
+                loading="lazy"
+                placeholder="blur"
+                blurDataURL={IMAGE_BLUR_DATA_URL}
+                className="max-w-full max-h-full object-contain rounded-[16px]"
               />
             </div>
             <div className="p-4 flex justify-center">

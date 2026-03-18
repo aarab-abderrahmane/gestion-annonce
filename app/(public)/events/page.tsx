@@ -1,8 +1,16 @@
 export const revalidate = 300;
 
+import type { Metadata } from 'next';
 import EventsRoute from '@/components/legacy/EventsRoute';
 import { normalizeEvent } from '@/lib/portal-data';
+import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
+
+export const metadata: Metadata = buildPublicMetadata({
+  title: 'الفعاليات | ISTA Ait Melloul',
+  description: 'أرشيف الفعاليات والأنشطة المنشورة الخاصة بـ ISTA Ait Melloul.',
+  path: '/events',
+});
 
 export default async function Page() {
   const supabase = await createClient();

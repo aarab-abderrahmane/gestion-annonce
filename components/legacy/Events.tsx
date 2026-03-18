@@ -1,10 +1,12 @@
 "use client";
 
 
+import Image from 'next/image';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Event } from '@/types';
 import { MapPin, Calendar as CalendarIcon, ArrowLeft, Search, X, ChevronDown, Check } from 'lucide-react';
 import Pagination from '@/components/shared/Pagination';
+import { IMAGE_BLUR_DATA_URL } from '@/lib/utils';
 
 interface EventsProps {
   events: Event[];
@@ -210,10 +212,15 @@ const Events: React.FC<EventsProps> = ({ events, onNavigate }) => {
 
                 {/* Card Media */}
                 <div className="relative aspect-video overflow-hidden" style={{ borderRadius: 'var(--md-shape-xl) var(--md-shape-xl) 0 0' }}>
-                  <img
+                  <Image
                     src={event.gallery?.[0] || `https://picsum.photos/seed/${event.id}/800/600`}
                     alt={event.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    loading="lazy"
+                    placeholder="blur"
+                    blurDataURL={IMAGE_BLUR_DATA_URL}
+                    className="object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                 </div>
 

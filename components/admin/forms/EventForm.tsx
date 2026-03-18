@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { getStorageErrorMessage, STORAGE_BUCKET } from '@/lib/storage';
+import { EVENTS_BUCKET } from '@/lib/storage';
+import {
+  eventSchema,
+  getFirstZodError,
+  validateUploadFile,
+} from '@/lib/validations';
 
 type Category = { id: string; name: string; slug: string };
 type EventPerson = { name: string; role: string; type: 'participant' | 'organizer' };
@@ -90,23 +95,81 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
   }
 
   function handleCoverChange(event: ChangeEvent<HTMLInputElement>) {
-    setCoverImageFile(event.target.files?.[0] ?? null);
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      setCoverImageFile(null);
+      return;
+    }
+
+    const validation = validateUploadFile(file);
+    if (!validation.success) {
+      setError(validation.error);
+      event.target.value = '';
+      setCoverImageFile(null);
+      return;
+    }
+
+    if (validation.fileType !== 'image') {
+      setError('يُسمح فقط بملفات الصور لهذا الحقل.');
+      event.target.value = '';
+      setCoverImageFile(null);
+      return;
+    }
+
+    setError('');
+    setCoverImageFile(file);
   }
 
   function handlePhotosChange(event: ChangeEvent<HTMLInputElement>) {
-    setPhotoFiles(Array.from(event.target.files ?? []).filter((file) => file.type.startsWith('image/')));
+    const files = Array.from(event.target.files ?? []);
+
+    for (const file of files) {
+      const validation = validateUploadFile(file);
+      if (!validation.success) {
+        setError(validation.error);
+        event.target.value = '';
+        setPhotoFiles([]);
+        return;
+      }
+
+      if (validation.fileType !== 'image') {
+        setError('يُسمح فقط بملفات الصور لهذا الحقل.');
+        event.target.value = '';
+        setPhotoFiles([]);
+        return;
+      }
+    }
+
+    setError('');
+    setPhotoFiles(files);
   }
 
   async function uploadImage(eventId: string, file: File, folder: string) {
-    const extension = file.name.includes('.') ? file.name.split('.').pop() : '';
-    const path = `${folder}/${eventId}/${Date.now()}-${Math.random().toString(36).slice(2)}${extension ? `.${extension}` : ''}`;
-    const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
+    const validation = validateUploadFile(file);
+    if (!validation.success) throw new Error(validation.error);
+    if (validation.fileType !== 'image') {
+      throw new Error('يُسمح فقط بملفات الصور لهذا الحقل.');
+    }
+
+    const formData = new FormData();
+    formData.set('bucket', EVENTS_BUCKET);
+    formData.set('folder', `${folder}/${eventId}`);
+    formData.set('file', file);
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
     });
-    if (uploadError) throw new Error(getStorageErrorMessage(uploadError.message));
-    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-    return data.publicUrl;
+    const result = (await response.json().catch(() => null)) as
+      | { error?: string; url?: string }
+      | null;
+
+    if (!response.ok || !result?.url) {
+      throw new Error(result?.error ?? 'فشل رفع الصورة.');
+    }
+
+    return result.url;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -115,30 +178,43 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
 
     const title = values.title.trim();
     const slug = mode === 'create' ? slugify(title) : values.slug || slugify(title);
-    const description = values.description.trim();
-    const location = values.location.trim();
-    const validPeople = values.people.filter((person) => person.name.trim() && person.role.trim());
+    const validation = eventSchema.safeParse({
+      title,
+      slug,
+      description: values.description.trim(),
+      location: values.location.trim(),
+      starts_at: values.starts_at,
+      ends_at: values.ends_at,
+      total_attendees: Number(values.total_attendees) || 0,
+      status: values.status,
+      category_ids: values.category_ids,
+      people: values.people,
+      cover_image: values.cover_image || '',
+      photos: values.photos ?? [],
+    });
 
-    if (!title || !slug || !description || !location || !values.starts_at || !values.ends_at || !values.status) {
-      setError('Tous les champs obligatoires doivent être remplis.');
+    if (!validation.success) {
+      setError(getFirstZodError(validation.error));
       return;
     }
 
     setSaving(true);
 
     try {
-      let coverImageUrl = values.cover_image || null;
+      const parsed = validation.data;
+      const validPeople = parsed.people.filter((person) => person.name.trim() && person.role.trim());
+      let coverImageUrl = parsed.cover_image || null;
       let eventId = id;
 
       const payloadBase = {
-        title,
+        title: parsed.title,
         slug,
-        description,
-        location,
-        starts_at: new Date(values.starts_at).toISOString(),
-        ends_at: new Date(values.ends_at).toISOString(),
-        total_attendees: Number(values.total_attendees) || 0,
-        status: values.status,
+        description: parsed.description,
+        location: parsed.location,
+        starts_at: new Date(parsed.starts_at).toISOString(),
+        ends_at: new Date(parsed.ends_at).toISOString(),
+        total_attendees: parsed.total_attendees,
+        status: parsed.status,
       };
 
       if (mode === 'create') {
@@ -160,8 +236,8 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
 
       const { error: deleteCategoryLinksError } = await supabase.from('event_category_links').delete().eq('event_id', eventId);
       if (deleteCategoryLinksError) throw new Error(deleteCategoryLinksError.message);
-      if (values.category_ids.length > 0) {
-        const links = values.category_ids.map((categoryId) => ({ event_id: eventId, category_id: categoryId }));
+      if (parsed.category_ids.length > 0) {
+        const links = parsed.category_ids.map((categoryId) => ({ event_id: eventId, category_id: categoryId }));
         const { error: categoryLinksError } = await supabase.from('event_category_links').insert(links);
         if (categoryLinksError) throw new Error(categoryLinksError.message);
       }

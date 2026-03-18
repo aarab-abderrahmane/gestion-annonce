@@ -1,10 +1,21 @@
 export const revalidate = 60;
 
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CalendarDays, ChevronLeft, Paperclip } from 'lucide-react';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
-import { normalizeAnnouncement } from '@/lib/portal-data';
+import { normalizeAnnouncement, type PortalAnnouncementRow } from '@/lib/portal-data';
+import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
+
+function toSeoDescription(value?: string | null) {
+  const content = (value ?? '').replace(/\s+/g, ' ').trim();
+  if (!content) {
+    return 'تفاصيل إعلان منشور على منصة ISTA Ait Melloul.';
+  }
+
+  return content.length > 160 ? `${content.slice(0, 157)}...` : content;
+}
 
 export async function generateStaticParams() {
   const supabase = await createClient();
@@ -15,6 +26,39 @@ export async function generateStaticParams() {
 
   if (error) console.error(error);
   return data?.map((item) => ({ slug: item.slug })) ?? [];
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('title, slug, description')
+    .eq('status', 'published')
+    .eq('slug', decodeURIComponent(slug))
+    .maybeSingle();
+
+  if (error) console.error(error);
+
+  if (!data) {
+    return buildPublicMetadata({
+      title: 'الإعلان غير موجود | ISTA Ait Melloul',
+      description: 'تعذر العثور على الإعلان المطلوب على منصة ISTA Ait Melloul.',
+      path: `/announcements/${encodeURIComponent(slug)}`,
+      type: 'article',
+    });
+  }
+
+  return buildPublicMetadata({
+    title: `${data.title} | ISTA Ait Melloul`,
+    description: toSeoDescription(data.description),
+    path: `/announcements/${encodeURIComponent(data.slug)}`,
+    type: 'article',
+  });
 }
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
@@ -37,7 +81,10 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     return <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">Not found</div>;
   }
 
-  const [announcementRow] = await hydrateAnnouncementFiles(supabase, [data]);
+  const [announcementRow] = await hydrateAnnouncementFiles(
+    supabase as never,
+    [data as PortalAnnouncementRow],
+  );
   const announcement = normalizeAnnouncement(announcementRow);
 
   return (

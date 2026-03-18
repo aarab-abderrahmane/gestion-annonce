@@ -15,15 +15,15 @@ type AnnouncementFileRecord = { file_name?: string | null; file_url?: string | n
 type AnnouncementCategoryLinkRecord = {
   announcement_categories?: CategoryRecord | CategoryRecord[] | null;
 };
-type AnnouncementRow = {
+export type PortalAnnouncementRow = {
   id: string;
   slug: string;
   title: string;
   description?: string | null;
   published_at?: string | null;
   expires_at?: string | null;
-  divisions?: DivisionRecord | null;
-  groups?: GroupRecord | null;
+  divisions?: DivisionRecord | DivisionRecord[] | null;
+  groups?: GroupRecord | GroupRecord[] | null;
   announcement_files?: AnnouncementFileRecord[] | null;
   announcement_category_links?: AnnouncementCategoryLinkRecord[] | null;
 };
@@ -68,10 +68,15 @@ function getRelatedName(record?: CategoryRecord | CategoryRecord[] | null) {
   return record?.name ?? null;
 }
 
-export const normalizeAnnouncement = (row: AnnouncementRow): Announcement => {
+function getEntityName(record?: DivisionRecord | DivisionRecord[] | GroupRecord | GroupRecord[] | null) {
+  if (Array.isArray(record)) return record[0]?.name ?? null;
+  return record?.name ?? null;
+}
+
+export const normalizeAnnouncement = (row: PortalAnnouncementRow): Announcement => {
   const categories = (row.announcement_category_links ?? [])
     .map((link) => getRelatedName(link.announcement_categories))
-    .filter(Boolean);
+    .filter((value): value is string => Boolean(value));
 
   const attachments = (row.announcement_files ?? [])
     .filter((file) => file.file_url)
@@ -85,7 +90,8 @@ export const normalizeAnnouncement = (row: AnnouncementRow): Announcement => {
     slug: row.slug,
     title: row.title,
     category: categories[0] || 'عام',
-    department: row.groups?.name || row.divisions?.name || undefined,
+    categories,
+    department: getEntityName(row.groups) || getEntityName(row.divisions) || undefined,
     publishDate: dateOnly(row.published_at),
     expiryDate: dateOnly(row.expires_at),
     content: row.description || '',
@@ -98,7 +104,7 @@ export const normalizeNews = (row: NewsRow): NewsAlert => ({
   slug: row.slug,
   title: row.title,
   description: row.title,
-  riskLevel: levelMap[row.level] || 'medium',
+  riskLevel: row.level ? levelMap[row.level] ?? 'medium' : 'medium',
   publishDate: row.created_at,
   expiryDate: row.expires_at,
 });
@@ -106,10 +112,12 @@ export const normalizeNews = (row: NewsRow): NewsAlert => ({
 export const normalizeEvent = (row: EventRow): Event => {
   const categories = (row.event_category_links ?? [])
     .map((link) => getRelatedName(link.event_categories))
-    .filter(Boolean);
+    .filter((value): value is string => Boolean(value));
 
-  const photos = (row.event_photos ?? []).map((photo) => photo.photo_url).filter(Boolean);
-  const gallery = [row.cover_image, ...photos].filter(Boolean);
+  const photos = (row.event_photos ?? [])
+    .map((photo) => photo.photo_url)
+    .filter((value): value is string => Boolean(value));
+  const gallery = [row.cover_image, ...photos].filter((value): value is string => Boolean(value));
   const people = (row.event_people ?? []).map((person, index: number) => ({
     id: person.id || `${row.id}-${index}`,
     name: person.name,
@@ -146,6 +154,7 @@ export const normalizeEvent = (row: EventRow): Event => {
     participants: participants.length ? participants : undefined,
     attendeeCount: row.total_attendees ?? 0,
     categories: categories.length ? categories : undefined,
+    photos: photos.map((url, index) => ({ id: `${row.id}-photo-${index}`, eventId: row.id, url })),
     isUpcoming: new Date(row.ends_at).getTime() >= Date.now(),
     category: categories[0] || 'عام',
   };

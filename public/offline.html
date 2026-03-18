@@ -35,12 +35,28 @@
         line-height: 1.8;
         color: #45615f;
       }
+
+      button {
+        margin-top: 1.5rem;
+        padding: 0.85rem 1.4rem;
+        border: 0;
+        border-radius: 999px;
+        background: #006a60;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
     <main>
       <h1>لا يوجد اتصال بالإنترنت</h1>
       <p>تحقق من الشبكة ثم أعد المحاولة. يمكنك الرجوع لاحقاً إلى الإعلانات والفعاليات عندما يعود الاتصال.</p>
+      <button type="button" onclick="window.location.reload()">إعادة المحاولة</button>
     </main>
+    <script>
+      window.addEventListener("online", () => window.location.reload());
+    </script>
   </body>
 </html>

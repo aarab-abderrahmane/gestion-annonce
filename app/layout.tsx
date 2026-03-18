@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+import ServiceWorkerRegistration from "@/components/shared/ServiceWorkerRegistration";
+import { getSiteUrl, SITE_TITLE } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "بوابة المؤسسة الرقمية",
-  description: "منصة الإعلانات والأخبار العاجلة والفعاليات المؤسسية.",
+  metadataBase: new URL(getSiteUrl()),
+  title: SITE_TITLE,
+  description: "المنصة الرسمية للإعلانات والفعاليات والمعلومات المهمة الخاصة بـ ISTA Ait Melloul.",
+  openGraph: {
+    title: SITE_TITLE,
+    description: "المنصة الرسمية للإعلانات والفعاليات والمعلومات المهمة الخاصة بـ ISTA Ait Melloul.",
+    siteName: SITE_TITLE,
+    locale: "ar_MA",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ar" dir="rtl">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Roboto:wght@400;500;700&display=swap"
-          rel="stylesheet"
-        />
-        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
-      </head>
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerRegistration />
+        {children}
+      </body>
     </html>
   );
 }

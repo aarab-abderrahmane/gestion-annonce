@@ -1,10 +1,23 @@
 export const revalidate = 30;
 
+import type { Metadata } from 'next';
 import PublicShell from '@/components/legacy/PublicShell';
 import HomeRoute from '@/components/legacy/HomeRoute';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
-import { normalizeAnnouncement, normalizeEvent, normalizeNews } from '@/lib/portal-data';
+import {
+  normalizeAnnouncement,
+  normalizeEvent,
+  normalizeNews,
+  type PortalAnnouncementRow,
+} from '@/lib/portal-data';
+import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
+
+export const metadata: Metadata = buildPublicMetadata({
+  title: 'الرئيسية | ISTA Ait Melloul',
+  description: 'الصفحة الرئيسية لمنصة gestion-annonces الخاصة بـ ISTA Ait Melloul لعرض الإعلانات والمعلومات المهمة والفعاليات.',
+  path: '/',
+});
 
 export default async function Page() {
   const supabase = await createClient();
@@ -41,7 +54,10 @@ export default async function Page() {
   if (announcementsError) console.error(announcementsError);
   if (eventsError) console.error(eventsError);
 
-  const announcementsWithFiles = await hydrateAnnouncementFiles(supabase, announcementsData ?? []);
+  const announcementsWithFiles = await hydrateAnnouncementFiles(
+    supabase as never,
+    (announcementsData ?? []) as PortalAnnouncementRow[],
+  );
   const news = (breakingNewsData ?? []).map(normalizeNews);
   const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const events = (eventsData ?? []).map(normalizeEvent);

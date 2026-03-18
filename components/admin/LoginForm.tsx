@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { adminLoginSchema, getFirstZodError } from '@/lib/validations';
 
 const inputCls = "w-full md-body-large px-4 h-14 rounded-[var(--md-shape-s)] border outline-none transition-colors";
 const inputStyle = { background: 'transparent', borderColor: 'var(--md-outline)', color: 'var(--md-on-surface)' };
@@ -16,9 +17,19 @@ export default function LoginForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true); setError('');
+    setError('');
+    const validation = adminLoginSchema.safeParse({
+      email,
+      password,
+    });
+    if (!validation.success) {
+      setError(getFirstZodError(validation.error));
+      return;
+    }
+
+    setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword(validation.data);
     if (error) { setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.'); setLoading(false); return; }
     router.push('/dashboard'); router.refresh();
   }

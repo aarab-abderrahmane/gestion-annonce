@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Plus, Trash2 } from 'lucide-react';
+import { categoryFormSchema, getFirstZodError } from '@/lib/validations';
 
 type Category = { id: string; name: string; slug: string };
 type Props = { announcementCategories: Category[]; eventCategories: Category[] };
@@ -27,9 +28,17 @@ function CategorySection({ title, table, rows }: { title: string; table: 'announ
     event.preventDefault();
     const trimmed = name.trim();
     const slug = slugify(trimmed);
-    if (!trimmed || !slug) { setError('الاسم مطلوب.'); return; }
+    const validation = categoryFormSchema.safeParse({
+      name: trimmed,
+      slug,
+    });
+    if (!validation.success) {
+      setError(getFirstZodError(validation.error));
+      return;
+    }
+
     setSubmitting(true); setError('');
-    const { error: insertError } = await supabase.from(table).insert({ name: trimmed, slug });
+    const { error: insertError } = await supabase.from(table).insert(validation.data);
     if (insertError) { setError(insertError.message); setSubmitting(false); return; }
     setName('');
     router.refresh();

@@ -1,9 +1,11 @@
 
 "use client";
 
+import Image from 'next/image';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Announcement, Event, NewsAlert } from '@/types';
 import { Bell, Info, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Search, X, FileText } from 'lucide-react';
+import { IMAGE_BLUR_DATA_URL } from '@/lib/utils';
 
 interface HomeProps {
   announcements: Announcement[];
@@ -131,7 +133,16 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, onNavigat
               className={`absolute inset-0 transition-transform duration-[10s] ease-linear ${index === activeSlide ? 'scale-110' : 'scale-100'
                 }`}
             >
-              <img src={slide.image} alt={slide.title} className="w-full h-full object-cover opacity-50" />
+              <Image
+                src={slide.image}
+                alt={slide.title}
+                fill
+                sizes="100vw"
+                loading="lazy"
+                placeholder="blur"
+                blurDataURL={IMAGE_BLUR_DATA_URL}
+                className="object-cover opacity-50"
+              />
             </div>
 
             {/* Scrim */}

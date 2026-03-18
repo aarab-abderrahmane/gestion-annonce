@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { adminSettingsSchema, getFirstZodError } from '@/lib/validations';
 
 type Props = { email: string };
 
@@ -21,10 +22,22 @@ export default function SettingsForm({ email }: Props) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaving(true); setError(''); setSuccess('');
+    setError('');
+    setSuccess('');
+    const validation = adminSettingsSchema.safeParse({
+      email: newEmail.trim(),
+      password: newPassword.trim(),
+    });
+    if (!validation.success) {
+      setError(getFirstZodError(validation.error));
+      return;
+    }
+
+    setSaving(true);
+    const parsed = validation.data;
     const payload: { email?: string; password?: string } = {};
-    if (newEmail.trim() && newEmail.trim() !== email) payload.email = newEmail.trim();
-    if (newPassword.trim()) payload.password = newPassword.trim();
+    if (parsed.email && parsed.email !== email) payload.email = parsed.email;
+    if (parsed.password) payload.password = parsed.password;
     if (!payload.email && !payload.password) {
       setError('أدخل بريداً إلكترونياً أو كلمة مرور جديدة أولاً.');
       setSaving(false); return;

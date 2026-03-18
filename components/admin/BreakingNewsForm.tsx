@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import {
+  breakingNewsSchema,
+  getFirstZodError,
+} from '@/lib/validations';
 
 type FormValues = {
   title: string;
@@ -56,17 +60,28 @@ export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNe
     setError('');
     const trimmedTitle = values.title.trim();
     const generatedSlug = slugify(trimmedTitle);
-    if (!trimmedTitle || !generatedSlug || !values.level || !values.status || !values.expires_at) {
-      setError('جميع الحقول مطلوبة.');
-      return;
-    }
-    setSaving(true);
-    const payload = {
+    const slug = mode === 'create' ? generatedSlug : values.slug || generatedSlug;
+    const validation = breakingNewsSchema.safeParse({
       title: trimmedTitle,
-      slug: mode === 'create' ? generatedSlug : values.slug,
+      slug,
       level: values.level,
       status: values.status,
-      expires_at: new Date(values.expires_at).toISOString(),
+      expires_at: values.expires_at,
+    });
+
+    if (!validation.success) {
+      setError(getFirstZodError(validation.error));
+      return;
+    }
+
+    setSaving(true);
+    const parsed = validation.data;
+    const payload = {
+      title: parsed.title,
+      slug,
+      level: parsed.level,
+      status: parsed.status,
+      expires_at: new Date(parsed.expires_at).toISOString(),
     };
     const query = mode === 'create'
       ? supabase.from('breaking_news').insert(payload)

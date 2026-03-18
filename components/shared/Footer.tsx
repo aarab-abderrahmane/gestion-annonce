@@ -10,10 +10,10 @@ export default function Footer() {
             <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
               <Building2 size={20} />
             </span>
-            <h3 className="md-title-large">مؤسسة التطوير</h3>
+            <h3 className="md-title-large">ISTA Ait Melloul</h3>
           </div>
           <p className="md-body-medium" style={{ color: "var(--md-on-surface-variant)" }}>
-            منصة مؤسسية لعرض الإعلانات الرسمية والتنبيهات العاجلة والفعاليات العامة في واجهة واحدة.
+            منصة الإعلانات الرسمية للمعهد المتخصص للتكنولوجيا التطبيقية بأيت ملول، لعرض المستجدات والتنبيهات والفعاليات في واجهة موحدة.
           </p>
         </div>
         <div>
@@ -25,11 +25,11 @@ export default function Footer() {
           </div>
         </div>
         <div>
-          <h3 className="md-title-medium mb-5">تواصل معنا</h3>
+          <h3 className="md-title-medium mb-5">معلومات المؤسسة</h3>
           <div className="space-y-2 md-body-medium" style={{ color: "var(--md-on-surface-variant)" }}>
-            <p>الهاتف الموحد: 92000XXXX</p>
-            <p>البريد الإلكتروني: info@institution.sa</p>
-            <p>الرياض، المملكة العربية السعودية</p>
+            <p>المؤسسة: المعهد المتخصص للتكنولوجيا التطبيقية</p>
+            <p>الموقع: أيت ملول، المغرب</p>
+            <p>المنصة مخصصة لنشر الإعلانات والفعاليات الرسمية الخاصة بالمؤسسة.</p>
           </div>
         </div>
       </div>

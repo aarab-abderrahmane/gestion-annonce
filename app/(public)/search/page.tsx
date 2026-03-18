@@ -1,8 +1,32 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Bell, Calendar, Info, Search } from 'lucide-react';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
-import { normalizeAnnouncement, normalizeEvent, normalizeNews } from '@/lib/portal-data';
+import {
+  normalizeAnnouncement,
+  normalizeEvent,
+  normalizeNews,
+  type PortalAnnouncementRow,
+} from '@/lib/portal-data';
+import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const query = (params.q || '').trim();
+
+  return buildPublicMetadata({
+    title: query ? `نتائج البحث: ${query} | ISTA Ait Melloul` : 'البحث | ISTA Ait Melloul',
+    description: query
+      ? `نتائج البحث عن "${query}" في الإعلانات والتنبيهات والفعاليات الخاصة بـ ISTA Ait Melloul.`
+      : 'ابحث في الإعلانات والتنبيهات والفعاليات المنشورة على منصة ISTA Ait Melloul.',
+    path: query ? `/search?q=${encodeURIComponent(query)}` : '/search',
+  });
+}
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams;
@@ -41,7 +65,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   if (announcementsError) console.error(announcementsError);
   if (eventsError) console.error(eventsError);
 
-  const announcementsWithFiles = await hydrateAnnouncementFiles(supabase, announcementsData ?? []);
+  const announcementsWithFiles = await hydrateAnnouncementFiles(
+    supabase as never,
+    (announcementsData ?? []) as PortalAnnouncementRow[],
+  );
   const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const news = (breakingNewsData ?? []).map(normalizeNews);
   const events = (eventsData ?? []).map(normalizeEvent);

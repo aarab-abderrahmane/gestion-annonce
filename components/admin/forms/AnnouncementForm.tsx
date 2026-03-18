@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { getStorageErrorMessage, STORAGE_BUCKET } from '@/lib/storage';
+import { ANNOUNCEMENTS_BUCKET } from '@/lib/storage';
+import {
+  announcementSchema,
+  getFirstZodError,
+  validateUploadFile,
+} from '@/lib/validations';
 
 type Division = { id: string; name: string; slug: string };
 type Group = { id: string; name: string; slug: string; division_id: string };
@@ -42,12 +47,6 @@ function slugify(value: string) {
     .replace(/^-|-$/g, '');
 }
 
-function getFileType(file: File): 'pdf' | 'image' | null {
-  if (file.type === 'application/pdf') return 'pdf';
-  if (file.type.startsWith('image/')) return 'image';
-  return null;
-}
-
 export default function AnnouncementForm({ mode, divisions, groups, categories, initialValues, id }: Props) {
   const router = useRouter();
   const supabase = createClient();
@@ -73,7 +72,19 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
   }, [availableGroups, values.division_id, values.group_id]);
 
   function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []).filter((file) => getFileType(file));
+    const files = Array.from(event.target.files ?? []);
+
+    for (const file of files) {
+      const validation = validateUploadFile(file);
+      if (!validation.success) {
+        setError(validation.error);
+        event.target.value = '';
+        setSelectedFiles([]);
+        return;
+      }
+    }
+
+    setError('');
     setSelectedFiles(files);
   }
 
@@ -90,26 +101,33 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
     const uploaded = [] as Array<{ announcement_id: string; file_url: string; file_name: string; file_type: 'pdf' | 'image' }>;
 
     for (const file of selectedFiles) {
-      const fileType = getFileType(file);
-      if (!fileType) continue;
-      const extension = file.name.includes('.') ? file.name.split('.').pop() : '';
-      const path = `${announcementId}/${Date.now()}-${Math.random().toString(36).slice(2)}${extension ? `.${extension}` : ''}`;
-
-      const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-      if (uploadError) {
-        throw new Error(getStorageErrorMessage(uploadError.message));
+      const validation = validateUploadFile(file);
+      if (!validation.success) {
+        throw new Error(validation.error);
       }
 
-      const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+      const formData = new FormData();
+      formData.set('bucket', ANNOUNCEMENTS_BUCKET);
+      formData.set('folder', announcementId);
+      formData.set('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string; url?: string }
+        | null;
+
+      if (!response.ok || !result?.url) {
+        throw new Error(result?.error ?? 'فشل رفع الملف.');
+      }
+
       uploaded.push({
         announcement_id: announcementId,
-        file_url: data.publicUrl,
+        file_url: result.url,
         file_name: file.name,
-        file_type: fileType,
+        file_type: validation.fileType,
       });
     }
 
@@ -127,23 +145,35 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
 
     const title = values.title.trim();
     const slug = mode === 'create' ? slugify(title) : values.slug || slugify(title);
+    const validation = announcementSchema.safeParse({
+      title,
+      slug,
+      description: values.description.trim(),
+      division_id: values.division_id,
+      group_id: values.group_id,
+      category_ids: values.category_ids,
+      expires_at: values.expires_at,
+      status: values.status,
+      files: values.files ?? [],
+    });
 
-    if (!title || !slug || !values.description.trim() || !values.division_id || !values.status) {
-      setError('Tous les champs obligatoires doivent être remplis.');
+    if (!validation.success) {
+      setError(getFirstZodError(validation.error));
       return;
     }
 
     setSaving(true);
 
     try {
+      const parsed = validation.data;
       const payload = {
-        title,
+        title: parsed.title,
         slug,
-        description: values.description.trim(),
-        division_id: values.division_id,
-        group_id: values.group_id || null,
-        expires_at: values.expires_at ? new Date(values.expires_at).toISOString() : null,
-        status: values.status,
+        description: parsed.description,
+        division_id: parsed.division_id,
+        group_id: parsed.group_id || null,
+        expires_at: parsed.expires_at ? new Date(parsed.expires_at).toISOString() : null,
+        status: parsed.status,
       };
 
       let announcementId = id;
@@ -170,8 +200,8 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
         throw new Error(deleteLinksError.message);
       }
 
-      if (values.category_ids.length > 0) {
-        const links = values.category_ids.map((categoryId) => ({
+      if (parsed.category_ids.length > 0) {
+        const links = parsed.category_ids.map((categoryId) => ({
           announcement_id: announcementId,
           category_id: categoryId,
         }));

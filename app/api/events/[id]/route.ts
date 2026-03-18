@@ -5,24 +5,29 @@ type RouteContext = {
   params: Promise<{ id: string }>
 }
 
-function buildAnnouncementPayload(body: Record<string, unknown>) {
+function buildEventPayload(body: Record<string, unknown>) {
   return {
     title: typeof body.title === 'string' ? body.title.trim() : undefined,
     slug: typeof body.slug === 'string' ? body.slug.trim() : undefined,
     description:
       typeof body.description === 'string' ? body.description.trim() : null,
-    division_id:
-      typeof body.division_id === 'string' ? body.division_id : undefined,
-    group_id: typeof body.group_id === 'string' && body.group_id ? body.group_id : null,
+    cover_image:
+      typeof body.cover_image === 'string' && body.cover_image
+        ? body.cover_image
+        : null,
+    location:
+      typeof body.location === 'string' ? body.location.trim() : undefined,
+    starts_at:
+      typeof body.starts_at === 'string' && body.starts_at
+        ? body.starts_at
+        : undefined,
+    ends_at:
+      typeof body.ends_at === 'string' && body.ends_at ? body.ends_at : undefined,
+    total_attendees:
+      typeof body.total_attendees === 'number'
+        ? body.total_attendees
+        : Number(body.total_attendees ?? 0),
     status: body.status === 'published' ? 'published' : 'draft',
-    published_at:
-      typeof body.published_at === 'string' && body.published_at
-        ? body.published_at
-        : null,
-    expires_at:
-      typeof body.expires_at === 'string' && body.expires_at
-        ? body.expires_at
-        : null,
   }
 }
 
@@ -30,15 +35,14 @@ export async function GET(_: Request, context: RouteContext) {
   const { id } = await context.params
   const supabase = await getSupabaseRouteClient()
   const { data, error } = await supabase
-    .from('announcements')
+    .from('events')
     .select(`
-      id, title, slug, description, division_id, group_id, status, published_at, expires_at,
-      divisions(id, name, slug),
-      groups(id, name, slug, division_id),
-      announcement_files(id, file_url, file_name, file_type),
-      announcement_category_links(
+      id, title, slug, description, cover_image, location, starts_at, ends_at, total_attendees, status, created_at,
+      event_people(id, name, role, type),
+      event_photos(id, photo_url),
+      event_category_links(
         category_id,
-        announcement_categories(id, name, slug)
+        event_categories(id, name, slug)
       )
     `)
     .eq('id', id)
@@ -50,7 +54,7 @@ export async function GET(_: Request, context: RouteContext) {
   }
 
   if (!data) {
-    return json({ error: 'Announcement not found' }, { status: 404 })
+    return json({ error: 'Event not found' }, { status: 404 })
   }
 
   return cachedJson(data)
@@ -62,10 +66,10 @@ export async function PUT(request: Request, context: RouteContext) {
 
   const { id } = await context.params
   const body = (await request.json()) as Record<string, unknown>
-  const payload = buildAnnouncementPayload(body)
+  const payload = buildEventPayload(body)
 
   const { data, error } = await auth.supabase
-    .from('announcements')
+    .from('events')
     .update(payload)
     .eq('id', id)
     .select()
@@ -83,7 +87,7 @@ export async function DELETE(_: Request, context: RouteContext) {
   if (auth.response) return auth.response
 
   const { id } = await context.params
-  const { error } = await auth.supabase.from('announcements').delete().eq('id', id)
+  const { error } = await auth.supabase.from('events').delete().eq('id', id)
 
   if (error) {
     return json({ error: error.message }, { status: 500 })
