@@ -10,6 +10,7 @@ const titleMap: Record<string, string> = {
   '/dashboard/announcements': 'الإعلانات',
   '/dashboard/events': 'الفعاليات',
   '/dashboard/categories': 'الأصناف',
+  '/dashboard/structure': 'الأقسام والمجموعات',
   '/dashboard/settings': 'الإعدادات',
 };
 

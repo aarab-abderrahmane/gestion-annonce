@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
@@ -15,6 +16,7 @@ type Division = { id: string; name: string; slug: string };
 type Group = { id: string; name: string; slug: string; division_id: string };
 type Category = { id: string; name: string; slug: string };
 type ExistingFile = { id?: string; file_url: string; file_name: string | null; file_type: 'pdf' | 'image' };
+type PreviewFile = ExistingFile & { previewKey: string; badge: string; metaLabel: string };
 
 type InitialValues = {
   title: string;
@@ -47,11 +49,94 @@ function slugify(value: string) {
     .replace(/^-|-$/g, '');
 }
 
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function revokePreviewUrls(files: PreviewFile[]) {
+  files.forEach((file) => {
+    if (file.file_url.startsWith('blob:')) {
+      URL.revokeObjectURL(file.file_url);
+    }
+  });
+}
+
+function AttachmentPreviewGrid({
+  title,
+  helperText,
+  files,
+}: {
+  title: string;
+  helperText?: string;
+  files: PreviewFile[];
+}) {
+  if (files.length === 0) return null;
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-[#38515a]">{title}</p>
+        {helperText ? <p className="text-xs text-[#6d7f82]">{helperText}</p> : null}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {files.map((file) => (
+          <div key={file.previewKey} className="overflow-hidden rounded-[28px] border border-[#d9cdbb] bg-white shadow-sm">
+            <div className="h-44 overflow-hidden border-b border-[#efe5d6] bg-[#faf5eb]">
+              {file.file_type === 'image' ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={file.file_url}
+                  alt={file.file_name || 'Announcement attachment preview'}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <iframe
+                  src={file.file_url}
+                  title={file.file_name || 'PDF preview'}
+                  className="h-full w-full"
+                />
+              )}
+            </div>
+
+            <div className="space-y-3 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 break-all text-sm font-semibold text-[#38515a]">
+                  {file.file_name || 'File'}
+                </p>
+                <span className="shrink-0 rounded-full bg-[#ece4d7] px-3 py-1 text-[11px] font-semibold text-[#38515a]">
+                  {file.badge}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 text-xs text-[#6d7f82]">
+                <span>{file.metaLabel}</span>
+                <a
+                  href={file.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-[#123c3a]"
+                >
+                  Preview
+                  <ExternalLink size={14} />
+                </a>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AnnouncementForm({ mode, divisions, groups, categories, initialValues, id }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [values, setValues] = useState<InitialValues>(initialValues);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFilePreviews, setSelectedFilePreviews] = useState<PreviewFile[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -71,8 +156,24 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
     setValues((current) => ({ ...current, group_id: '' }));
   }, [availableGroups, values.division_id, values.group_id]);
 
+  useEffect(() => {
+    return () => {
+      revokePreviewUrls(selectedFilePreviews);
+    };
+  }, [selectedFilePreviews]);
+
+  const existingFilePreviews = useMemo<PreviewFile[]>(() => {
+    return (values.files ?? []).map((file) => ({
+      ...file,
+      previewKey: `existing-${file.id ?? file.file_url}`,
+      badge: 'Uploaded',
+      metaLabel: file.file_type === 'image' ? 'Image' : 'PDF',
+    }));
+  }, [values.files]);
+
   function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
+    const validFiles: Array<{ file: File; fileType: 'pdf' | 'image' }> = [];
 
     for (const file of files) {
       const validation = validateUploadFile(file);
@@ -80,12 +181,31 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
         setError(validation.error);
         event.target.value = '';
         setSelectedFiles([]);
+        setSelectedFilePreviews((current) => {
+          revokePreviewUrls(current);
+          return [];
+        });
         return;
       }
+
+      validFiles.push({ file, fileType: validation.fileType });
     }
+
+    const nextPreviews = validFiles.map(({ file, fileType }, index) => ({
+      previewKey: `selected-${file.name}-${file.lastModified}-${index}`,
+      file_url: URL.createObjectURL(file),
+      file_name: file.name,
+      file_type: fileType,
+      badge: 'Selected',
+      metaLabel: `${fileType === 'image' ? 'Image' : 'PDF'} · ${formatFileSize(file.size)}`,
+    }));
 
     setError('');
     setSelectedFiles(files);
+    setSelectedFilePreviews((current) => {
+      revokePreviewUrls(current);
+      return nextPreviews;
+    });
   }
 
   function toggleCategory(categoryId: string) {
@@ -283,16 +403,16 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
         <div className="md:col-span-2">
           <label htmlFor="files" className="mb-2 block text-sm font-semibold text-[#38515a]">File upload</label>
           <input id="files" type="file" multiple accept="application/pdf,image/*" onChange={handleFilesChange} className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3" />
-          {(values.files?.length ?? 0) > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {values.files?.map((file) => (
-                <a key={file.id ?? file.file_url} href={file.file_url} target="_blank" rel="noreferrer" className="rounded-full bg-[#ece4d7] px-3 py-1 text-xs font-semibold text-[#38515a]">{file.file_name || 'File'}</a>
-              ))}
-            </div>
-          ) : null}
-          {selectedFiles.length > 0 ? (
-            <p className="mt-2 text-sm text-[#6d7f82]">{selectedFiles.length} file(s) selected</p>
-          ) : null}
+          <AttachmentPreviewGrid
+            title="Selected files preview"
+            helperText="These files will be uploaded after you save the announcement."
+            files={selectedFilePreviews}
+          />
+          <AttachmentPreviewGrid
+            title="Current attachments"
+            helperText="These files are already attached to this announcement."
+            files={existingFilePreviews}
+          />
         </div>
 
         <div className="md:col-span-2 rounded-2xl border border-dashed border-[#d9cdbb] bg-[#faf5eb] px-4 py-3 text-sm text-[#6d7f82]">

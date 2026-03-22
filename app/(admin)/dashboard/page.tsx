@@ -130,6 +130,9 @@ export default async function DashboardPage() {
           <Link href="/dashboard/announcements" className="md-btn md-btn-tonal md-state">
             الإعلانات
           </Link>
+          <Link href="/dashboard/structure" className="md-btn md-btn-tonal md-state">
+            الأقسام والمجموعات
+          </Link>
           <Link href="/dashboard/settings" className="md-btn md-btn-outlined md-state">
             الإعدادات
           </Link>

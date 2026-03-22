@@ -1,7 +1,7 @@
 "use client";
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { NewsAlert } from '@/types';
 import { AlertCircle, CheckCircle2, AlertTriangle, EyeOff, Eye, Clock } from 'lucide-react';
 import Pagination from '@/components/shared/Pagination';
@@ -17,15 +17,15 @@ const ImportantInfo: React.FC<ImportantInfoProps> = ({ newsItems }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const now = new Date();
 
-  const newsList = newsItems.filter(news => {
-    const isExpired = new Date(news.expiryDate) < now;
-    return showExpired ? true : !isExpired;
-  });
+  const isExpiredNotice = (news: NewsAlert) => new Date(news.expiryDate).getTime() < now.getTime();
 
-  useEffect(() => { setCurrentPage(1); }, [showExpired]);
+  const activeNews = newsItems.filter(news => !isExpiredNotice(news));
+  const archivedNews = newsItems.filter(isExpiredNotice);
+  const newsList = showExpired ? archivedNews : activeNews;
 
   const totalPages = Math.ceil(newsList.length / ITEMS_PER_PAGE);
-  const displayedNews = newsList.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const safeCurrentPage = totalPages === 0 ? 1 : Math.min(currentPage, totalPages);
+  const displayedNews = newsList.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -43,7 +43,10 @@ const ImportantInfo: React.FC<ImportantInfoProps> = ({ newsItems }) => {
 
         {/* Toggle — MD3 Outlined Button */}
         <button
-          onClick={() => setShowExpired(!showExpired)}
+          onClick={() => {
+            setShowExpired(!showExpired);
+            setCurrentPage(1);
+          }}
           className="flex items-center gap-2 rounded-full px-6 py-2.5 md-label-large transition-all shrink-0"
           style={{
             border: '1px solid var(--md-outline)',
@@ -63,8 +66,27 @@ const ImportantInfo: React.FC<ImportantInfoProps> = ({ newsItems }) => {
 
       {/* ── Alert Cards ───────────────────────────────────────────── */}
       <div className="space-y-4">
+        {displayedNews.length === 0 && (
+          <div
+            className="rounded-[24px] px-6 py-10 text-center"
+            style={{
+              background: 'var(--md-surface-container-low)',
+              border: '1px solid var(--md-outline-variant)',
+            }}
+          >
+            <h2 className="md-title-large mb-2" style={{ color: 'var(--md-on-surface)' }}>
+              {showExpired ? 'لا توجد تنبيهات مؤرشفة حالياً' : 'لا توجد تنبيهات نشطة حالياً'}
+            </h2>
+            <p className="md-body-large" style={{ color: 'var(--md-on-surface-variant)' }}>
+              {showExpired
+                ? 'عند انتهاء صلاحية أي تنبيه منشور سيظهر هنا ضمن الأرشيف.'
+                : 'سيتم عرض التنبيهات الرسمية هنا فور نشرها.'}
+            </p>
+          </div>
+        )}
+
         {displayedNews.map(news => {
-          const isExpired = new Date(news.expiryDate) < now;
+          const isExpired = isExpiredNotice(news);
           const isHigh = news.riskLevel === 'high';
           const isMed = news.riskLevel === 'medium';
 
@@ -171,7 +193,7 @@ const ImportantInfo: React.FC<ImportantInfoProps> = ({ newsItems }) => {
 
       {/* Pagination */}
       <div className="mt-10">
-        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        <Pagination currentPage={safeCurrentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BellRing, CalendarDays, FolderTree, House, Newspaper, Megaphone, Settings } from 'lucide-react';
+import { BellRing, Building2, CalendarDays, FolderTree, House, Newspaper, Megaphone, Settings } from 'lucide-react';
 
 const items = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: House },
@@ -10,6 +10,7 @@ const items = [
   { href: '/dashboard/announcements', label: 'الإعلانات', icon: Newspaper },
   { href: '/dashboard/events', label: 'الفعاليات', icon: CalendarDays },
   { href: '/dashboard/categories', label: 'الأصناف', icon: FolderTree },
+  { href: '/dashboard/structure', label: 'الأقسام والمجموعات', icon: Building2 },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
 ];
 
