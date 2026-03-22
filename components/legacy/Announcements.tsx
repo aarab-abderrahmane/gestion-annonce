@@ -1,12 +1,10 @@
 "use client";
 
 
-import Image from 'next/image';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Download, FileText, Check, X, Paperclip, Eye, FileJson, Filter, ChevronDown } from 'lucide-react';
 import { Announcement } from '@/types';
 import Pagination from '@/components/shared/Pagination';
-import { IMAGE_BLUR_DATA_URL } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -17,29 +15,38 @@ interface FilesModalProps {
 
 const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const [failedImageUrls, setFailedImageUrls] = useState<Record<string, boolean>>({});
 
-  const isImage = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext || '');
+  const isImage = (file: NonNullable<Announcement['attachments']>[number]) => {
+    if (file.fileType) return file.fileType === 'image';
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'avif'].includes(ext || '');
   };
 
-  const getFileIcon = (fileName: string, url: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    if (isImage(fileName) && url !== '#') {
+  const isPdf = (file: NonNullable<Announcement['attachments']>[number]) => {
+    if (file.fileType) return file.fileType === 'pdf';
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ext === 'pdf';
+  };
+
+  const getFileIcon = (file: NonNullable<Announcement['attachments']>[number]) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (isImage(file) && file.url !== '#' && !failedImageUrls[file.url]) {
       return (
-        <Image
-          src={url}
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={file.url}
           alt="Thumbnail"
-          width={48}
-          height={48}
           loading="lazy"
-          placeholder="blur"
-          blurDataURL={IMAGE_BLUR_DATA_URL}
           className="h-full w-full object-cover rounded"
+          onError={() => {
+            setFailedImageUrls((current) => ({ ...current, [file.url]: true }));
+          }}
         />
       );
     }
-    if (ext === 'pdf') return <FileText size={22} style={{ color: 'var(--md-error)' }} />;
+    if (isPdf(file)) return <FileText size={22} style={{ color: 'var(--md-error)' }} />;
     if (ext === 'docx' || ext === 'doc') return <FileText size={22} style={{ color: '#005FB0' }} />;
     return <FileJson size={22} style={{ color: 'var(--md-primary)' }} />;
   };
@@ -87,7 +94,7 @@ const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
           {/* File List */}
           <div className="space-y-2 max-h-[420px] overflow-y-auto">
             {announcement.attachments?.map((file, idx) => {
-              const imageFile = isImage(file.name) && file.url !== '#';
+              const imageFile = isImage(file) && file.url !== '#' && !failedImageUrls[file.url];
               return (
                 <div
                   key={idx}
@@ -103,7 +110,7 @@ const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
                       className="w-12 h-12 rounded-[12px] flex items-center justify-center shrink-0 overflow-hidden"
                       style={{ background: 'var(--md-surface-container-lowest)', border: '1px solid var(--md-outline-variant)' }}
                     >
-                      {getFileIcon(file.name, file.url)}
+                      {getFileIcon(file)}
                     </div>
                     <div className="overflow-hidden">
                       <span className="md-title-small block truncate" style={{ color: 'var(--md-on-surface)' }}>
@@ -121,7 +128,10 @@ const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
                   <div className="flex items-center gap-2 shrink-0">
                     {imageFile && (
                       <button
-                        onClick={() => setPreviewImage(file.url)}
+                        onClick={() => {
+                          setPreviewImage(file.url);
+                          setPreviewFailed(false);
+                        }}
                         className="md-icon-btn"
                         style={{ color: 'var(--md-primary)' }}
                         aria-label="معاينة"
@@ -179,16 +189,32 @@ const FilesModal: React.FC<FilesModalProps> = ({ announcement, onClose }) => {
               <div style={{ width: 40 }} />
             </div>
             <div className="flex-1 flex items-center justify-center p-4">
-              <Image
-                src={previewImage}
-                alt="معاينة"
-                width={1200}
-                height={900}
-                loading="lazy"
-                placeholder="blur"
-                blurDataURL={IMAGE_BLUR_DATA_URL}
-                className="max-w-full max-h-full object-contain rounded-[16px]"
-              />
+              {previewFailed ? (
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <FileText size={40} style={{ color: 'var(--md-inverse-on-surface)' }} />
+                  <p className="md-body-medium" style={{ color: 'var(--md-inverse-on-surface)' }}>
+                    تعذر عرض الصورة داخل المعاينة. يمكنك فتح الملف مباشرة.
+                  </p>
+                  <a
+                    href={previewImage}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="md-btn md-btn-filled"
+                    style={{ fontFamily: 'var(--md-font-brand)', fontWeight: 600 }}
+                  >
+                    فتح الملف
+                  </a>
+                </div>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={previewImage}
+                  alt="معاينة"
+                  loading="lazy"
+                  className="max-w-full max-h-full object-contain rounded-[16px]"
+                  onError={() => setPreviewFailed(true)}
+                />
+              )}
             </div>
             <div className="p-4 flex justify-center">
               <a
@@ -220,10 +246,8 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
-  const categories = useMemo(() => ['all', ...Array.from(new Set(announcements.map(a => a.category)))], []);
-  const departments = useMemo(() => ['all', ...Array.from(new Set(announcements.filter(a => a.department).map(a => a.department as string)))], []);
-
-  useEffect(() => { setCurrentPage(1); }, [filterCategory, filterDepartment, filterOnlyWithAttachments, searchQuery]);
+  const categories = useMemo(() => ['all', ...Array.from(new Set(announcements.map(a => a.category)))], [announcements]);
+  const departments = useMemo(() => ['all', ...Array.from(new Set(announcements.filter(a => a.department).map(a => a.department as string)))], [announcements]);
 
   useEffect(() => {
     if (selectedAnnouncement) document.body.style.overflow = 'hidden';
@@ -238,17 +262,19 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
       const matchesAttachments = !filterOnlyWithAttachments || (ann.attachments && ann.attachments.length > 0);
       const matchesSearch = ann.title.includes(searchQuery) || ann.content.includes(searchQuery);
       return matchesCategory && matchesDepartment && matchesAttachments && matchesSearch;
-    }), [filterCategory, filterDepartment, filterOnlyWithAttachments, searchQuery]
+    }), [announcements, filterCategory, filterDepartment, filterOnlyWithAttachments, searchQuery]
   );
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const displayedAnnouncements = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const safeCurrentPage = totalPages === 0 ? 1 : Math.min(currentPage, totalPages);
+  const displayedAnnouncements = filtered.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
 
   const resetFilters = () => {
     setFilterCategory('all');
     setFilterDepartment('all');
     setFilterOnlyWithAttachments(false);
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   const activeFiltersCount = [filterCategory !== 'all', filterDepartment !== 'all', filterOnlyWithAttachments].filter(Boolean).length;
@@ -285,12 +311,18 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
               fontFamily: 'var(--md-font-brand)',
             }}
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={e => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
           />
           {searchQuery && (
             <button
               className="md-icon-btn"
-              onClick={() => setSearchQuery('')}
+              onClick={() => {
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}
               aria-label="مسح البحث"
             >
               <X size={18} />
@@ -355,7 +387,10 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
               <div className="relative">
                 <select
                   value={filterCategory}
-                  onChange={e => setFilterCategory(e.target.value)}
+                  onChange={e => {
+                    setFilterCategory(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full appearance-none rounded-[12px] py-3 px-4 pl-10 md-body-large outline-none cursor-pointer"
                   style={{
                     background: 'var(--md-surface-container)',
@@ -379,7 +414,10 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
               <div className="relative">
                 <select
                   value={filterDepartment}
-                  onChange={e => setFilterDepartment(e.target.value)}
+                  onChange={e => {
+                    setFilterDepartment(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full appearance-none rounded-[12px] py-3 px-4 pl-10 md-body-large outline-none cursor-pointer"
                   style={{
                     background: 'var(--md-surface-container)',
@@ -398,7 +436,10 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
             {/* Attachments filter chip */}
             <div className="flex flex-col justify-end">
               <button
-                onClick={() => setFilterOnlyWithAttachments(!filterOnlyWithAttachments)}
+                onClick={() => {
+                  setFilterOnlyWithAttachments(!filterOnlyWithAttachments);
+                  setCurrentPage(1);
+                }}
                 className={`md-chip flex items-center gap-2 ${filterOnlyWithAttachments ? 'md-chip-selected' : ''}`}
                 style={{ height: '48px', borderRadius: 'var(--md-shape-m)' }}
               >
@@ -552,7 +593,7 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
 
       {/* Pagination */}
       <div className="mt-8">
-        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        <Pagination currentPage={safeCurrentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
 
       {/* Files Modal */}

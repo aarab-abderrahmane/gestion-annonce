@@ -11,7 +11,11 @@ const dateOnly = (value?: string | null) => (value ? value.split('T')[0] : '');
 type CategoryRecord = { id?: string | null; name?: string | null; slug?: string | null };
 type DivisionRecord = { name?: string | null };
 type GroupRecord = { name?: string | null };
-type AnnouncementFileRecord = { file_name?: string | null; file_url?: string | null };
+type AnnouncementFileRecord = {
+  file_name?: string | null;
+  file_url?: string | null;
+  file_type?: 'pdf' | 'image' | null;
+};
 type AnnouncementCategoryLinkRecord = {
   announcement_categories?: CategoryRecord | CategoryRecord[] | null;
 };
@@ -83,6 +87,7 @@ export const normalizeAnnouncement = (row: PortalAnnouncementRow): Announcement 
     .map((file) => ({
       name: file.file_name || file.file_url?.split('/').pop() || 'file',
       url: file.file_url as string,
+      fileType: file.file_type ?? undefined,
     }));
 
   return {
