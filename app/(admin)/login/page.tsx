@@ -6,7 +6,10 @@ import { Megaphone } from 'lucide-react';
 export default async function LoginPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect('/dashboard');
+  if (user) {
+    const { data: isAdmin, error } = await supabase.rpc('is_admin');
+    if (!error && isAdmin) redirect('/dashboard');
+  }
 
   return (
     <div

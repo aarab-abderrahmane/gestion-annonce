@@ -55,7 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
             <div className="flex items-center gap-2">
               {/* MD3 Icon Button — menu */}
               <button
-                className="md:hidden md-icon-btn"
+                className=" md:hidden"
                 onClick={() => setIsDrawerOpen(true)}
                 aria-label="القائمة"
               >
@@ -112,10 +112,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
             {/* Trailing — Avatar */}
             <div
               className="hidden md:flex w-8 h-8 rounded-full items-center justify-center md-title-small cursor-pointer"
-              style={{ background: 'var(--md-primary)', color: 'var(--md-on-primary)' }}
-              title="الملف الشخصي"
+             
             >
-              م
             </div>
           </div>
         </div>
@@ -136,7 +134,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
             className="relative w-[360px] max-w-[85vw] h-full flex flex-col"
             style={{
               background: 'var(--md-surface-container-low)',
-              borderRadius: '0 var(--md-shape-xl) var(--md-shape-xl) 0',
+              borderRadius: '  var(--md-shape-xl) 0 0 var(--md-shape-xl)  ',
               boxShadow: '0px 8px 12px 6px rgba(0,0,0,0.15), 0px 4px 4px rgba(0,0,0,0.3)',
             }}
           >

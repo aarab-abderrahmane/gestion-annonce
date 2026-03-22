@@ -1,10 +1,10 @@
 export const revalidate = 300;
 
 import type { Metadata } from 'next';
+import EventDetailPage from '@/components/public/EventDetailPage';
 import { normalizeEvent } from '@/lib/portal-data';
 import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
-import EventDetailRoute from '@/components/legacy/EventDetailRoute';
 
 function toSeoDescription(value?: string | null) {
   const content = (value ?? '').replace(/\s+/g, ' ').trim();
@@ -77,9 +77,13 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
 
   if (error) console.error(error);
   if (!data) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">Not found</div>;
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8 text-right sm:px-6 lg:px-8 md:py-12">
+        تعذر العثور على الفعالية المطلوبة.
+      </div>
+    );
   }
 
   const event = normalizeEvent(data);
-  return <EventDetailRoute event={event} />;
+  return <EventDetailPage event={event} />;
 }

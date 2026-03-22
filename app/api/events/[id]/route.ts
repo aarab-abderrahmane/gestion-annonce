@@ -1,4 +1,4 @@
-import { cachedJson, json, requireAuthenticatedUser } from '@/app/api/_utils'
+import { cachedJson, json, requireAdminUser } from '@/app/api/_utils'
 import { getSupabaseRouteClient } from '@/app/api/_utils'
 
 type RouteContext = {
@@ -61,7 +61,7 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const auth = await requireAuthenticatedUser()
+  const auth = await requireAdminUser()
   if (auth.response) return auth.response
 
   const { id } = await context.params
@@ -83,7 +83,7 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_: Request, context: RouteContext) {
-  const auth = await requireAuthenticatedUser()
+  const auth = await requireAdminUser()
   if (auth.response) return auth.response
 
   const { id } = await context.params

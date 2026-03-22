@@ -1,11 +1,11 @@
-import { json, requireAuthenticatedUser } from '@/app/api/_utils'
+import { json, requireAdminUser } from '@/app/api/_utils'
 import { ANNOUNCEMENTS_BUCKET, EVENTS_BUCKET } from '@/lib/storage'
 import { validateUploadFile } from '@/lib/validations'
 
 const allowedBuckets = new Set([ANNOUNCEMENTS_BUCKET, EVENTS_BUCKET])
 
 export async function POST(request: Request) {
-  const auth = await requireAuthenticatedUser()
+  const auth = await requireAdminUser()
   if (auth.response) return auth.response
 
   const formData = await request.formData()

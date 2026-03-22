@@ -48,7 +48,7 @@ export default function Header() {
       >
         <div className="mx-auto flex h-16 max-w-screen-xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            <button className="md-icon-btn md:hidden" onClick={() => setIsDrawerOpen(true)} aria-label="القائمة">
+            <button className=" md:hidden" onClick={() => setIsDrawerOpen(true)} aria-label="القائمة">
               <Menu size={24} />
             </button>
             <Link href="/" className="md-state flex items-center gap-3 rounded-full px-3 py-1.5">
@@ -76,8 +76,7 @@ export default function Header() {
             ))}
           </nav>
 
-          <div className="hidden h-8 min-w-8 items-center justify-center rounded-full px-2 md:flex" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
-            <span className="md-label-medium font-bold">ISTA</span>
+          <div className="hidden h-8 min-w-8 items-center justify-center rounded-full px-2 md:flex" >
           </div>
         </div>
       </header>

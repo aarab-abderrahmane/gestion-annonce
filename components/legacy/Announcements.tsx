@@ -409,11 +409,11 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
             </div>
 
             {/* Reset */}
-            <div className="flex items-end">
+            <div className="flex items-end ">
               <button
                 onClick={resetFilters}
                 className="md-btn md-btn-text w-full"
-                style={{ color: 'var(--md-error)', fontFamily: 'var(--md-font-brand)', fontWeight: 600, border: 'none', background: 'none', cursor: 'pointer' }}
+                style={{ color: 'var(--md-error)',height: '48px',borderRadius: 'var(--md-shape-m)',  fontFamily: 'var(--md-font-brand)', fontWeight: 600, border: 'none', background: 'none', cursor: 'pointer' }}
               >
                 مسح الفلاتر
               </button>

@@ -11,5 +11,10 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
     redirect('/login');
   }
 
+  const { data: isAdmin, error } = await supabase.rpc('is_admin');
+  if (error || !isAdmin) {
+    redirect('/login');
+  }
+
   return children;
 }

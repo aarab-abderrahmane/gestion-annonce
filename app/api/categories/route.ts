@@ -1,7 +1,7 @@
-import { cachedJson, json, requireAuthenticatedUser } from '@/app/api/_utils'
+import { cachedJson, json, requireAdminUser } from '@/app/api/_utils'
 
 export async function GET() {
-  const auth = await requireAuthenticatedUser()
+  const auth = await requireAdminUser()
   if (auth.response) return auth.response
 
   const [

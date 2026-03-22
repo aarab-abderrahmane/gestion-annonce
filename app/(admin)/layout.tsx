@@ -12,6 +12,11 @@ export default async function AdminGroupLayout({ children }: Readonly<{ children
     return children;
   }
 
+  const { data: isAdmin, error } = await supabase.rpc('is_admin');
+  if (error || !isAdmin) {
+    return children;
+  }
+
   return (
     <div
       className="min-h-screen"

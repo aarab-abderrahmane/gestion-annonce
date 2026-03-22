@@ -1,4 +1,4 @@
-import { cachedJson, json, requireAuthenticatedUser } from '@/app/api/_utils'
+import { cachedJson, json, requireAdminUser } from '@/app/api/_utils'
 import { getSupabaseRouteClient } from '@/app/api/_utils'
 
 function buildAnnouncementPayload(body: Record<string, unknown>) {
@@ -47,7 +47,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAuthenticatedUser()
+  const auth = await requireAdminUser()
   if (auth.response) return auth.response
 
   const body = (await request.json()) as Record<string, unknown>

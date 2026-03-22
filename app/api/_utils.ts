@@ -38,3 +38,19 @@ export async function requireAuthenticatedUser() {
 
   return { supabase, user, response: null }
 }
+
+export async function requireAdminUser() {
+  const auth = await requireAuthenticatedUser()
+  if (auth.response) return auth
+
+  const { data: isAdmin, error } = await auth.supabase.rpc('is_admin')
+
+  if (error || !isAdmin) {
+    return {
+      ...auth,
+      response: json({ error: 'Forbidden' }, { status: 403 }),
+    }
+  }
+
+  return auth
+}
