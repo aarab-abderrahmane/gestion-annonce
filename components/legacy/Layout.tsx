@@ -13,6 +13,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const showAnimatedLogo = currentPage === 'home';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 4);
@@ -69,9 +70,20 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
                 onClick={() => onNavigate('home')}
               >
                 <span
-                  className="w-10 h-10 rounded-full border  flex items-center justify-center  font-bold overflow-hidden"
+                  className={showAnimatedLogo ? 'site-logo-ring' : 'inline-flex'}
                 >
-                  <img src="/images/ofppt-logo.jpeg" ></img>
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ${
+                      showAnimatedLogo ? 'site-logo-ring__inner' : ''
+                    }`}
+                    style={{ background: 'var(--md-surface-container-low)' }}
+                  >
+                    <img
+                      src="/images/ofppt-logo.jpeg"
+                      alt="ISTA Ait Melloul logo"
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
                 </span>
                 <span className="md-title-medium hidden sm:block" style={{ color: 'var(--md-on-surface)' }}>
                  ISTA AIT MELLOUL

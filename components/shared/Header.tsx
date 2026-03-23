@@ -17,6 +17,9 @@ export default function Header() {
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const isHome = pathname === "/";
+  const logoRingClassName = isHome ? "site-logo-ring" : "inline-flex";
+  const logoCoreClassName = `flex h-8 w-8 items-center justify-center rounded-full ${isHome ? "site-logo-ring__inner" : ""}`;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 4);
@@ -52,8 +55,10 @@ export default function Header() {
               <Menu size={24} />
             </button>
             <Link href="/" className="md-state flex items-center gap-3 rounded-full px-3 py-1.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
-                <Building2 size={18} />
+              <span className={logoRingClassName}>
+                <span className={logoCoreClassName} style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
+                  <Building2 size={18} />
+                </span>
               </span>
               <span className="md-title-medium hidden sm:block">ISTA Ait Melloul</span>
             </Link>
@@ -87,8 +92,10 @@ export default function Header() {
           <div className="relative flex h-full w-[360px] max-w-[85vw] flex-col" style={{ background: "var(--md-surface-container-low)", boxShadow: "0 8px 12px rgba(0,0,0,0.2)" }}>
             <div className="flex items-center justify-between px-6 pt-6 pb-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
-                  <Building2 size={18} />
+                <span className={logoRingClassName}>
+                  <span className={logoCoreClassName} style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
+                    <Building2 size={18} />
+                  </span>
                 </span>
                 <span className="md-title-medium">ISTA Ait Melloul</span>
               </div>

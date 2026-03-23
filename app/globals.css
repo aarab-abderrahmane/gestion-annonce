@@ -483,6 +483,40 @@
       scrollbar-width: none;
     }
 
+    .site-logo-ring {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+      overflow: hidden;
+      border-radius: var(--md-shape-full);
+      isolation: isolate;
+      box-shadow: 0 0 0 1px rgba(63, 73, 70, 0.08);
+    }
+
+    .site-logo-ring::before {
+      content: '';
+      position: absolute;
+      inset: -35%;
+      border-radius: inherit;
+      background: conic-gradient(
+        from 0deg,
+        #2f80ed 0deg,
+        #2f80ed 110deg,
+        #0f9f79 110deg,
+        #0f9f79 230deg,
+        #8f98a3 230deg,
+        #8f98a3 360deg
+      );
+      animation: site-logo-ring-spin 4.5s linear infinite;
+    }
+
+    .site-logo-ring__inner {
+      position: relative;
+      z-index: 1;
+    }
+
     /* ── Misc ─────────────────────────────────────────────────────────── */
     .line-clamp-1 {
       display: -webkit-box;
@@ -514,5 +548,15 @@
       to {
         opacity: 1;
         transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes site-logo-ring-spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
       }
     }
