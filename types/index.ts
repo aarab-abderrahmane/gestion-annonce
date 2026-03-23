@@ -73,6 +73,8 @@ export interface Announcement {
   category: string;
   categories?: string[];
   categoryRecords?: AnnouncementCategory[];
+  divisionName?: string;
+  groupName?: string;
   division?: Division | null;
   group?: Group | null;
   department?: string;

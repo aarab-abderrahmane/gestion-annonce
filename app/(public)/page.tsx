@@ -2,7 +2,9 @@ export const revalidate = 30;
 
 import type { Metadata } from 'next';
 import HomeRoute from '@/components/legacy/HomeRoute';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
+import { collectErrorMessages } from '@/lib/errors';
 import {
   normalizeAnnouncement,
   normalizeEvent,
@@ -49,17 +51,29 @@ export default async function Page() {
       .order('starts_at', { ascending: false }),
   ]);
 
-  if (newsError) console.error(newsError);
-  if (announcementsError) console.error(announcementsError);
-  if (eventsError) console.error(eventsError);
+  const announcementFileErrors: string[] = [];
 
   const announcementsWithFiles = await hydrateAnnouncementFiles(
     supabase as never,
     (announcementsData ?? []) as PortalAnnouncementRow[],
+    {
+      onError: (message) => announcementFileErrors.push(message),
+    },
   );
+  const pageErrors = collectErrorMessages([
+    newsError,
+    announcementsError,
+    eventsError,
+    ...announcementFileErrors,
+  ]);
   const news = (breakingNewsData ?? []).map(normalizeNews);
   const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const events = (eventsData ?? []).map(normalizeEvent);
 
-  return <HomeRoute announcements={announcements} newsItems={news} events={events} />;
+  return (
+    <>
+      <ErrorToastTrigger messages={pageErrors} />
+      <HomeRoute announcements={announcements} newsItems={news} events={events} />
+    </>
+  );
 }

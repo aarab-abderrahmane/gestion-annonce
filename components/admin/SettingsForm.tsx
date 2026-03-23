@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorToast } from '@/components/ui/useErrorToast';
 import { adminSettingsSchema, getFirstZodError } from '@/lib/validations';
 
 type Props = { email: string };
@@ -19,6 +20,8 @@ export default function SettingsForm({ email }: Props) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useErrorToast(error);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

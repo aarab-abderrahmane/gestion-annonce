@@ -2,7 +2,9 @@ export const revalidate = 60;
 
 import type { Metadata } from 'next';
 import Announcements from '@/components/legacy/Announcements';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
+import { collectErrorMessages } from '@/lib/errors';
 import { normalizeAnnouncement, type PortalAnnouncementRow } from '@/lib/portal-data';
 import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
@@ -26,12 +28,22 @@ export default async function Page() {
     .eq('status', 'published')
     .order('published_at', { ascending: false });
 
-  if (error) console.error(error);
+  const announcementFileErrors: string[] = [];
 
   const announcementsWithFiles = await hydrateAnnouncementFiles(
     supabase as never,
     (data ?? []) as PortalAnnouncementRow[],
+    {
+      onError: (message) => announcementFileErrors.push(message),
+    },
   );
+  const pageErrors = collectErrorMessages([error, ...announcementFileErrors]);
   const announcements = announcementsWithFiles.map(normalizeAnnouncement);
-  return <Announcements announcements={announcements} />;
+
+  return (
+    <>
+      <ErrorToastTrigger messages={pageErrors} />
+      <Announcements announcements={announcements} />
+    </>
+  );
 }

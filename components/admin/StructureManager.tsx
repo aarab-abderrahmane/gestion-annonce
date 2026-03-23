@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, FolderTree, Plus, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorToast } from '@/components/ui/useErrorToast';
 import { categoryFormSchema, getFirstZodError } from '@/lib/validations';
 
 type Division = { id: string; name: string; slug: string };
@@ -80,6 +81,8 @@ function DivisionsSection({
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  useErrorToast(error);
 
   const groupCountByDivision = useMemo(() => {
     return groups.reduce<Record<string, number>>((accumulator, group) => {
@@ -226,6 +229,8 @@ function GroupsSection({
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  useErrorToast(error);
 
   const divisionNameById = useMemo(() => {
     return divisions.reduce<Record<string, string>>((accumulator, division) => {

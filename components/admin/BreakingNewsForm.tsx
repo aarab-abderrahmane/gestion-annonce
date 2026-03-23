@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorToast } from '@/components/ui/useErrorToast';
 import {
   breakingNewsSchema,
   getFirstZodError,
@@ -45,11 +46,7 @@ export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNe
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (mode === 'create') {
-      setValues((curr) => ({ ...curr, slug: slugify(curr.title) }));
-    }
-  }, [mode, values.title]);
+  useErrorToast(error);
 
   function setField<K extends keyof FormValues>(key: K, val: FormValues[K]) {
     setValues((curr) => ({ ...curr, [key]: val }));
@@ -101,7 +98,14 @@ export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNe
             <input
               id="title"
               value={values.title}
-              onChange={(e) => setField('title', e.target.value)}
+              onChange={(e) => {
+                const nextTitle = e.target.value;
+                setValues((curr) => ({
+                  ...curr,
+                  title: nextTitle,
+                  slug: mode === 'create' ? slugify(nextTitle) : curr.slug,
+                }));
+              }}
               placeholder="أدخل عنوان الخبر"
               className={inputCls}
               style={inputStyle}

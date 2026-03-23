@@ -239,15 +239,35 @@ interface AnnouncementsProps {
 
 const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
   const [filterCategory, setFilterCategory] = useState('all');
-  const [filterDepartment, setFilterDepartment] = useState('all');
+  const [filterDivision, setFilterDivision] = useState('all');
+  const [filterGroup, setFilterGroup] = useState('all');
   const [filterOnlyWithAttachments, setFilterOnlyWithAttachments] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
-  const categories = useMemo(() => ['all', ...Array.from(new Set(announcements.map(a => a.category)))], [announcements]);
-  const departments = useMemo(() => ['all', ...Array.from(new Set(announcements.filter(a => a.department).map(a => a.department as string)))], [announcements]);
+  const categories = useMemo(
+    () => [
+      'all',
+      ...Array.from(
+        new Set(
+          announcements.flatMap((announcement) =>
+            announcement.categories?.length ? announcement.categories : [announcement.category]
+          )
+        )
+      ),
+    ],
+    [announcements]
+  );
+  const divisions = useMemo(
+    () => ['all', ...Array.from(new Set(announcements.flatMap((announcement) => announcement.divisionName ? [announcement.divisionName] : [])))],
+    [announcements]
+  );
+  const groups = useMemo(
+    () => ['all', ...Array.from(new Set(announcements.flatMap((announcement) => announcement.groupName ? [announcement.groupName] : [])))],
+    [announcements]
+  );
 
   useEffect(() => {
     if (selectedAnnouncement) document.body.style.overflow = 'hidden';
@@ -257,12 +277,14 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
 
   const filtered = useMemo(() =>
     announcements.filter(ann => {
-      const matchesCategory = filterCategory === 'all' || ann.category === filterCategory;
-      const matchesDepartment = filterDepartment === 'all' || ann.department === filterDepartment;
+      const categoryValues = ann.categories?.length ? ann.categories : [ann.category];
+      const matchesCategory = filterCategory === 'all' || categoryValues.includes(filterCategory);
+      const matchesDivision = filterDivision === 'all' || ann.divisionName === filterDivision;
+      const matchesGroup = filterGroup === 'all' || ann.groupName === filterGroup;
       const matchesAttachments = !filterOnlyWithAttachments || (ann.attachments && ann.attachments.length > 0);
       const matchesSearch = ann.title.includes(searchQuery) || ann.content.includes(searchQuery);
-      return matchesCategory && matchesDepartment && matchesAttachments && matchesSearch;
-    }), [announcements, filterCategory, filterDepartment, filterOnlyWithAttachments, searchQuery]
+      return matchesCategory && matchesDivision && matchesGroup && matchesAttachments && matchesSearch;
+    }), [announcements, filterCategory, filterDivision, filterGroup, filterOnlyWithAttachments, searchQuery]
   );
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -271,13 +293,19 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
 
   const resetFilters = () => {
     setFilterCategory('all');
-    setFilterDepartment('all');
+    setFilterDivision('all');
+    setFilterGroup('all');
     setFilterOnlyWithAttachments(false);
     setSearchQuery('');
     setCurrentPage(1);
   };
 
-  const activeFiltersCount = [filterCategory !== 'all', filterDepartment !== 'all', filterOnlyWithAttachments].filter(Boolean).length;
+  const activeFiltersCount = [
+    filterCategory !== 'all',
+    filterDivision !== 'all',
+    filterGroup !== 'all',
+    filterOnlyWithAttachments,
+  ].filter(Boolean).length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
@@ -289,7 +317,7 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
             مركز الإعلانات
           </h1>
           <p className="md-body-large" style={{ color: 'var(--md-on-surface-variant)' }}>
-            تصفح القرارات، التعاميم، والإعلانات الرسمية المصنفة حسب القسم والفئة.
+            تصفح القرارات، التعاميم، والإعلانات الرسمية المصنفة حسب القسم والمجموعة والفئة.
           </p>
         </div>
 
@@ -378,7 +406,7 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
             borderTop: isFiltersExpanded ? '1px solid var(--md-outline-variant)' : 'none',
           }}
         >
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {/* Category dropdown */}
             <div className="space-y-2">
               <label className="md-label-small uppercase tracking-widest" style={{ color: 'var(--md-on-surface-variant)' }}>
@@ -406,16 +434,16 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
               </div>
             </div>
 
-            {/* Department dropdown */}
+            {/* Division dropdown */}
             <div className="space-y-2">
               <label className="md-label-small uppercase tracking-widest" style={{ color: 'var(--md-on-surface-variant)' }}>
                 القسم
               </label>
               <div className="relative">
                 <select
-                  value={filterDepartment}
+                  value={filterDivision}
                   onChange={e => {
-                    setFilterDepartment(e.target.value);
+                    setFilterDivision(e.target.value);
                     setCurrentPage(1);
                   }}
                   className="w-full appearance-none rounded-[12px] py-3 px-4 pl-10 md-body-large outline-none cursor-pointer"
@@ -427,7 +455,34 @@ const Announcements: React.FC<AnnouncementsProps> = ({ announcements }) => {
                     fontWeight: 600,
                   }}
                 >
-                  {departments.map(dept => <option key={dept} value={dept}>{dept === 'all' ? 'الكل' : dept}</option>)}
+                  {divisions.map((division) => <option key={division} value={division}>{division === 'all' ? 'الكل' : division}</option>)}
+                </select>
+                <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--md-on-surface-variant)' }} />
+              </div>
+            </div>
+
+            {/* Group dropdown */}
+            <div className="space-y-2">
+              <label className="md-label-small uppercase tracking-widest" style={{ color: 'var(--md-on-surface-variant)' }}>
+                المجموعة
+              </label>
+              <div className="relative">
+                <select
+                  value={filterGroup}
+                  onChange={e => {
+                    setFilterGroup(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full appearance-none rounded-[12px] py-3 px-4 pl-10 md-body-large outline-none cursor-pointer"
+                  style={{
+                    background: 'var(--md-surface-container)',
+                    color: 'var(--md-on-surface)',
+                    border: '1px solid var(--md-outline-variant)',
+                    fontFamily: 'var(--md-font-brand)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {groups.map((group) => <option key={group} value={group}>{group === 'all' ? 'الكل' : group}</option>)}
                 </select>
                 <ChevronDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--md-on-surface-variant)' }} />
               </div>

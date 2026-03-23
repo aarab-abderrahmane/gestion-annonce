@@ -2,6 +2,8 @@ export const revalidate = 30;
 
 import type { Metadata } from 'next';
 import ImportantInfo from '@/components/legacy/ImportantInfo';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { collectErrorMessages } from '@/lib/errors';
 import { normalizeNews } from '@/lib/portal-data';
 import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
@@ -20,11 +22,13 @@ export default async function Page() {
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error(error);
-  }
-
+  const pageErrors = collectErrorMessages([error]);
   const newsItems = (data ?? []).map(normalizeNews);
 
-  return <ImportantInfo newsItems={newsItems} />;
+  return (
+    <>
+      <ErrorToastTrigger messages={pageErrors} />
+      <ImportantInfo newsItems={newsItems} />
+    </>
+  );
 }

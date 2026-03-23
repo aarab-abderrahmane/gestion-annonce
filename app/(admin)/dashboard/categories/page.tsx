@@ -1,4 +1,6 @@
 import CategoriesManager from '@/components/admin/CategoriesManager';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function CategoriesPage() {
@@ -8,13 +10,15 @@ export default async function CategoriesPage() {
     supabase.from('event_categories').select('id, name, slug').order('name'),
   ]);
 
-  if (announcementError) console.error(announcementError);
-  if (eventError) console.error(eventError);
+  const pageErrors = collectErrorMessages([announcementError, eventError]);
 
   return (
-    <CategoriesManager
-      announcementCategories={announcementCategories ?? []}
-      eventCategories={eventCategories ?? []}
-    />
+    <>
+      <ErrorToastTrigger messages={pageErrors} />
+      <CategoriesManager
+        announcementCategories={announcementCategories ?? []}
+        eventCategories={eventCategories ?? []}
+      />
+    </>
   );
 }

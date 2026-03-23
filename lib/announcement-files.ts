@@ -1,3 +1,5 @@
+import { getErrorMessage } from '@/lib/errors';
+
 type AnnouncementRow = {
   id: string;
   announcement_files?: AnnouncementFileInputRow[] | null;
@@ -36,6 +38,11 @@ type AnnouncementWithFiles<T extends AnnouncementRow> = T & {
   announcement_files: AnnouncementFileRow[];
 };
 
+type HydrateAnnouncementFileOptions = {
+  includeId?: boolean;
+  onError?: (message: string) => void;
+};
+
 function normalizeExistingFiles(
   announcementId: string,
   files?: AnnouncementFileInputRow[] | null,
@@ -52,7 +59,7 @@ function normalizeExistingFiles(
 export async function hydrateAnnouncementFiles<T extends AnnouncementRow>(
   supabase: SupabaseLikeClient,
   announcements: T[],
-  options?: { includeId?: boolean }
+  options?: HydrateAnnouncementFileOptions
 ) : Promise<AnnouncementWithFiles<T>[]> {
   if (!announcements.length) return [];
 
@@ -78,7 +85,7 @@ export async function hydrateAnnouncementFiles<T extends AnnouncementRow>(
     .order('created_at', { ascending: true });
 
   if (error) {
-    console.error(error);
+    options?.onError?.(getErrorMessage(error));
     return announcements.map((announcement) => ({
       ...announcement,
       announcement_files: normalizeExistingFiles(

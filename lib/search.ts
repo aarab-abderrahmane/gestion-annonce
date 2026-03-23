@@ -204,7 +204,6 @@ export async function searchPublicContent(
   });
 
   if (error) {
-    console.error(error);
     return fallbackSearch(supabase, filters);
   }
 

@@ -1,6 +1,34 @@
 import Link from 'next/link';
 import EventsTable from '@/components/admin/EventsTable';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
+
+type EventCategory = {
+  id?: string | null;
+  name?: string | null;
+  slug?: string | null;
+};
+
+type EventCategoryLink = {
+  event_categories?: EventCategory | EventCategory[] | null;
+};
+
+type EventListRow = {
+  id: string;
+  title: string;
+  location: string | null;
+  starts_at: string;
+  status: string;
+  cover_image: string | null;
+  event_photos?: Array<{ photo_url: string | null }> | null;
+  event_category_links?: EventCategoryLink[] | null;
+};
+
+function getCategoryRecord(record?: EventCategory | EventCategory[] | null) {
+  if (Array.isArray(record)) return record[0];
+  return record;
+}
 
 export default async function EventsAdminPage() {
   const supabase = await createClient();
@@ -24,10 +52,8 @@ export default async function EventsAdminPage() {
     supabase.from('event_categories').select('id, name, slug').order('name'),
   ]);
 
-  if (eventsError) console.error(eventsError);
-  if (categoriesError) console.error(categoriesError);
-
-  const rows = (events ?? []).map((item: any) => ({
+  const pageErrors = collectErrorMessages([eventsError, categoriesError]);
+  const rows = ((events ?? []) as EventListRow[]).map((item) => ({
     id: item.id,
     title: item.title,
     location: item.location,
@@ -35,15 +61,22 @@ export default async function EventsAdminPage() {
     status: item.status,
     coverImage: item.cover_image,
     photos: item.event_photos ?? [],
-    categories: (item.event_category_links ?? []).map((link: any) => ({
-      id: link.event_categories?.id ?? link.event_categories?.[0]?.id ?? '',
-      name: link.event_categories?.name ?? link.event_categories?.[0]?.name ?? '',
-      slug: link.event_categories?.slug ?? link.event_categories?.[0]?.slug ?? '',
-    })).filter((category: any) => category.id),
+    categories: (item.event_category_links ?? [])
+      .map((link) => {
+        const category = getCategoryRecord(link.event_categories);
+
+        return {
+          id: category?.id ?? '',
+          name: category?.name ?? '',
+          slug: category?.slug ?? '',
+        };
+      })
+      .filter((category) => category.id),
   }));
 
   return (
     <section className="rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] shadow-sm">
+      <ErrorToastTrigger messages={pageErrors} />
       <div className="flex items-center justify-between border-b border-[#ece4d7] px-6 py-5">
         <div>
           <h2 className="text-2xl font-black text-[#123c3a]">Events</h2>

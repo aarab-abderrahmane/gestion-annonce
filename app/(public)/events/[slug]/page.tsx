@@ -2,6 +2,8 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import EventDetailPage from '@/components/public/EventDetailPage';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { collectErrorMessages } from '@/lib/errors';
 import { normalizeEvent } from '@/lib/portal-data';
 import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
@@ -17,12 +19,11 @@ function toSeoDescription(value?: string | null) {
 
 export async function generateStaticParams() {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('events')
     .select('slug')
     .eq('status', 'published');
 
-  if (error) console.error(error);
   return data?.map((item) => ({ slug: item.slug })) ?? [];
 }
 
@@ -33,14 +34,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('events')
     .select('title, slug, description, cover_image')
     .eq('status', 'published')
     .eq('slug', decodeURIComponent(slug))
     .maybeSingle();
-
-  if (error) console.error(error);
 
   if (!data) {
     return buildPublicMetadata({
@@ -75,15 +74,25 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     .eq('slug', decodeURIComponent(slug))
     .maybeSingle();
 
-  if (error) console.error(error);
+  const pageErrors = collectErrorMessages([error]);
+
   if (!data) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8 text-right sm:px-6 lg:px-8 md:py-12">
-        تعذر العثور على الفعالية المطلوبة.
-      </div>
+      <>
+        <ErrorToastTrigger messages={pageErrors} />
+        <div className="mx-auto max-w-5xl px-4 py-8 text-right sm:px-6 lg:px-8 md:py-12">
+          {pageErrors.length ? 'تعذر تحميل الفعالية حالياً.' : 'تعذر العثور على الفعالية المطلوبة.'}
+        </div>
+      </>
     );
   }
 
   const event = normalizeEvent(data);
-  return <EventDetailPage event={event} />;
+
+  return (
+    <>
+      <ErrorToastTrigger messages={pageErrors} />
+      <EventDetailPage event={event} />
+    </>
+  );
 }

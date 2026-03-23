@@ -69,13 +69,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
                 onClick={() => onNavigate('home')}
               >
                 <span
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                  style={{ background: 'var(--md-primary)', color: 'var(--md-on-primary)' }}
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden"
                 >
-                  <Building2 size={18} />
+                  {/* <Building2 size={18} /> */}
+                  <img src="/images/ofppt-logo.jpeg"></img>
                 </span>
                 <span className="md-title-medium hidden sm:block" style={{ color: 'var(--md-on-surface)' }}>
-                  مؤسسة التطوير
+                 ISTA AIT MELLOUL
                 </span>
               </button>
             </div>

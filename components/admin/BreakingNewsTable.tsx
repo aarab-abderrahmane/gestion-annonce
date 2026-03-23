@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/ToastProvider';
 
 const levelLabels: Record<string, string> = {
   dangerous: 'خطير',
@@ -29,6 +30,7 @@ type Row = {
 export default function BreakingNewsTable({ rows }: { rows: Row[] }) {
   const supabase = createClient();
   const router = useRouter();
+  const toast = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   return (
@@ -101,13 +103,18 @@ export default function BreakingNewsTable({ rows }: { rows: Row[] }) {
                         onClick={async () => {
                           if (!window.confirm('حذف هذا الخبر العاجل؟')) return;
                           setDeletingId(row.id);
-                          const { error } = await supabase.from('breaking_news').delete().eq('id', row.id);
-                          if (error) {
-                            alert(error.message);
+                          try {
+                            const { error } = await supabase.from('breaking_news').delete().eq('id', row.id);
+                            if (error) {
+                              toast.error(error);
+                              setDeletingId(null);
+                              return;
+                            }
+                            router.refresh();
+                          } catch (error) {
+                            toast.error(error);
                             setDeletingId(null);
-                            return;
                           }
-                          router.refresh();
                         }}
                         disabled={deletingId === row.id}
                         className="md-btn md-state disabled:opacity-50"

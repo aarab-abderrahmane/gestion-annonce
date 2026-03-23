@@ -1,4 +1,6 @@
 import StructureManager from '@/components/admin/StructureManager';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function StructurePage() {
@@ -8,13 +10,15 @@ export default async function StructurePage() {
     supabase.from('groups').select('id, name, slug, division_id').order('name'),
   ]);
 
-  if (divisionsError) console.error(divisionsError);
-  if (groupsError) console.error(groupsError);
+  const pageErrors = collectErrorMessages([divisionsError, groupsError]);
 
   return (
-    <StructureManager
-      divisions={divisions ?? []}
-      groups={groups ?? []}
-    />
+    <>
+      <ErrorToastTrigger messages={pageErrors} />
+      <StructureManager
+        divisions={divisions ?? []}
+        groups={groups ?? []}
+      />
+    </>
   );
 }

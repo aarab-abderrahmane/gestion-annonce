@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorToast } from '@/components/ui/useErrorToast';
 import { EVENTS_BUCKET } from '@/lib/storage';
 import {
   eventSchema,
@@ -55,6 +56,8 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useErrorToast(error);
 
   useEffect(() => {
     if (mode === 'create') {

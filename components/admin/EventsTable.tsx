@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/ToastProvider';
 import { Filter } from 'lucide-react';
 
 type Category = { id: string; name: string; slug: string };
@@ -34,6 +35,7 @@ function extractStorageTarget(fileUrl: string) {
 export default function EventsTable({ rows, categories }: { rows: Row[]; categories: FilterOption[] }) {
   const supabase = createClient();
   const router = useRouter();
+  const toast = useToast();
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -58,10 +60,14 @@ export default function EventsTable({ rows, categories }: { rows: Row[]; categor
         await supabase.storage.from(target.bucket).remove([target.path]);
       }
       const { error } = await supabase.from('events').delete().eq('id', row.id);
-      if (error) { alert(error.message); setDeletingId(null); return; }
+      if (error) {
+        toast.error(error);
+        setDeletingId(null);
+        return;
+      }
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'خطأ غير متوقع');
+      toast.error(err);
       setDeletingId(null);
     }
   }

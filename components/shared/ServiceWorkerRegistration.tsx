@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect } from 'react';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function ServiceWorkerRegistration() {
+  const toast = useToast();
+
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
@@ -10,7 +13,7 @@ export default function ServiceWorkerRegistration() {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         registrations.forEach((registration) => {
           registration.unregister().catch((error) => {
-            console.error('Service worker unregister failed', error);
+            toast.error(error, { title: 'تعذر تعطيل عامل الخدمة' });
           });
         });
       });
@@ -19,9 +22,9 @@ export default function ServiceWorkerRegistration() {
     }
 
     navigator.serviceWorker.register('/sw.js').catch((error) => {
-      console.error('Service worker registration failed', error);
+      toast.error(error, { title: 'تعذر تفعيل العمل دون اتصال' });
     });
-  }, []);
+  }, [toast]);
 
   return null;
 }

@@ -81,6 +81,8 @@ export const normalizeAnnouncement = (row: PortalAnnouncementRow): Announcement 
   const categories = (row.announcement_category_links ?? [])
     .map((link) => getRelatedName(link.announcement_categories))
     .filter((value): value is string => Boolean(value));
+  const divisionName = getEntityName(row.divisions) || undefined;
+  const groupName = getEntityName(row.groups) || undefined;
 
   const attachments = (row.announcement_files ?? [])
     .filter((file) => file.file_url)
@@ -96,7 +98,9 @@ export const normalizeAnnouncement = (row: PortalAnnouncementRow): Announcement 
     title: row.title,
     category: categories[0] || 'عام',
     categories,
-    department: getEntityName(row.groups) || getEntityName(row.divisions) || undefined,
+    divisionName,
+    groupName,
+    department: divisionName,
     publishDate: dateOnly(row.published_at),
     expiryDate: dateOnly(row.expires_at),
     content: row.description || '',

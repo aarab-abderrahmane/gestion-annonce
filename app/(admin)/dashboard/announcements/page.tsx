@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import AnnouncementsTable from '@/components/admin/AnnouncementsTable';
+import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
+import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
 type AnnouncementCategory = { id?: string | null; name?: string | null; slug?: string | null };
@@ -47,14 +49,21 @@ export default async function AnnouncementsAdminPage() {
     supabase.from('announcement_categories').select('id, name, slug').order('name'),
   ]);
 
-  if (announcementsError) console.error(announcementsError);
-  if (divisionsError) console.error(divisionsError);
-  if (categoriesError) console.error(categoriesError);
+  const announcementFileErrors: string[] = [];
 
   const announcementsWithFiles = await hydrateAnnouncementFiles(
     supabase as never,
     (announcements ?? []) as AnnouncementListRow[],
+    {
+      onError: (message) => announcementFileErrors.push(message),
+    },
   );
+  const pageErrors = collectErrorMessages([
+    announcementsError,
+    divisionsError,
+    categoriesError,
+    ...announcementFileErrors,
+  ]);
 
   const rows = announcementsWithFiles.map((item) => ({
     id: item.id,
@@ -78,6 +87,7 @@ export default async function AnnouncementsAdminPage() {
 
   return (
     <section className="rounded-[32px] border border-[#d9cdbb] bg-[#fffdf8] shadow-sm">
+      <ErrorToastTrigger messages={pageErrors} />
       <div className="flex items-center justify-between border-b border-[#ece4d7] px-6 py-5">
         <div>
           <h2 className="text-2xl font-black text-[#123c3a]">Announcements</h2>

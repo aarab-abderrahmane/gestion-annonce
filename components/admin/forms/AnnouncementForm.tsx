@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorToast } from '@/components/ui/useErrorToast';
 import { ANNOUNCEMENTS_BUCKET } from '@/lib/storage';
 import {
   announcementSchema,
@@ -139,6 +140,8 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
   const [selectedFilePreviews, setSelectedFilePreviews] = useState<PreviewFile[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useErrorToast(error);
 
   const availableGroups = useMemo(() => {
     return groups.filter((group) => group.division_id === values.division_id);

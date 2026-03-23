@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorToast } from '@/components/ui/useErrorToast';
 import { adminLoginSchema, getFirstZodError } from '@/lib/validations';
 
 const inputCls = "w-full md-body-large px-4 h-14 rounded-[var(--md-shape-s)] border outline-none transition-colors";
@@ -14,6 +15,8 @@ export default function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useErrorToast(error);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

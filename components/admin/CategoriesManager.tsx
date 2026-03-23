@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useErrorToast } from '@/components/ui/useErrorToast';
 import { Plus, Trash2 } from 'lucide-react';
 import { categoryFormSchema, getFirstZodError } from '@/lib/validations';
 
@@ -23,6 +24,8 @@ function CategorySection({ title, table, rows }: { title: string; table: 'announ
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  useErrorToast(error);
 
   async function handleAdd(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
