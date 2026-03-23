@@ -124,6 +124,9 @@ export default async function DashboardPage() {
           روابط سريعة
         </h2>
         <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/home-carousel" className="md-btn md-btn-tonal md-state">
+            كاروسيل الرئيسية
+          </Link>
           <Link href="/dashboard/breaking-news" className="md-btn md-btn-filled md-state">
             إدارة الأخبار العاجلة
           </Link>

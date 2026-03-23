@@ -1,68 +1,45 @@
 
 "use client";
 
-import Image from 'next/image';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Announcement, Event, NewsAlert } from '@/types';
-import { Bell, Info, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Search, X, FileText } from 'lucide-react';
-import { IMAGE_BLUR_DATA_URL } from '@/lib/utils';
+import { Announcement, Event, HomeCarouselSlide, NewsAlert } from '@/types';
+import { Bell, Info, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
 interface HomeProps {
   announcements: Announcement[];
   newsItems: NewsAlert[];
   events: Event[];
+  slides?: HomeCarouselSlide[];
   onNavigate: (page: string) => void;
 }
 
-const FEATURED_SLIDES = [
-  {
-    id: 1,
-    title: 'مستقبل التحول الرقمي',
-    subtitle: 'نحو آفاق جديدة من الابتكار والتميز المؤسسي',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1600',
-    cta: 'استكشف الفعاليات',
-    target: 'events',
-  },
-  {
-    id: 2,
-    title: 'بيئة عمل ذكية',
-    subtitle: 'إطلاق الحزمة الجديدة من الخدمات الإلكترونية للموظفين',
-    image: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1600',
-    cta: 'تصفح الإعلانات',
-    target: 'announcements',
-  },
-  {
-    id: 3,
-    title: 'ملتقى الإبداع السنوي',
-    subtitle: 'شاركنا أفكارك لتطوير مستقبل مؤسستنا نحو الأفضل',
-    image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=1600',
-    cta: 'سجل الآن',
-    target: 'events',
-  },
-];
-
-const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, onNavigate }) => {
+const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, slides = [], onNavigate }) => {
+  const heroSlides = slides;
+  const hasHeroSlides = heroSlides.length > 0;
+  const hasCarouselControls = heroSlides.length > 1;
   const [activeSlide, setActiveSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const currentSlideIndex = hasHeroSlides ? activeSlide % heroSlides.length : 0;
 
   const nextSlide = useCallback(() => {
-    if (isTransitioning) return;
+    if (!hasCarouselControls || isTransitioning) return;
     setIsTransitioning(true);
-    setActiveSlide((prev) => (prev + 1) % FEATURED_SLIDES.length);
+    setActiveSlide((prev) => (prev + 1) % heroSlides.length);
     setTimeout(() => setIsTransitioning(false), 500);
-  }, [isTransitioning]);
+  }, [hasCarouselControls, heroSlides.length, isTransitioning]);
 
   const prevSlide = () => {
-    if (isTransitioning) return;
+    if (!hasCarouselControls || isTransitioning) return;
     setIsTransitioning(true);
-    setActiveSlide((prev) => (prev - 1 + FEATURED_SLIDES.length) % FEATURED_SLIDES.length);
+    setActiveSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
     setTimeout(() => setIsTransitioning(false), 500);
   };
 
   useEffect(() => {
+    if (!hasCarouselControls) return;
     const timer = setInterval(nextSlide, 6000);
     return () => clearInterval(timer);
-  }, [nextSlide]);
+  }, [hasCarouselControls, nextSlide]);
 
   const latestAnnouncements = announcements.slice(0, 3);
   const breakingNews = newsItems.filter(n => new Date(n.expiryDate) > new Date()).slice(0, 3);
@@ -119,115 +96,113 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, onNavigat
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
 
       {/* ── Hero Carousel ──────────────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden rounded-[28px] h-[480px] md:h-[600px]"
-        style={{ background: 'var(--md-inverse-surface)' }}
-      >
-        {FEATURED_SLIDES.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${index === activeSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-              }`}
-          >
+      {hasHeroSlides ? (
+        <section
+          className="relative overflow-hidden rounded-[28px] h-[480px] md:h-[600px]"
+          style={{ background: 'var(--md-inverse-surface)' }}
+        >
+          {heroSlides.map((slide, index) => (
             <div
-              className={`absolute inset-0 transition-transform duration-[10s] ease-linear ${index === activeSlide ? 'scale-110' : 'scale-100'
+              key={slide.id}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${index === currentSlideIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
                 }`}
             >
-              <Image
-                src={slide.image}
-                alt={slide.title}
-                fill
-                sizes="100vw"
-                loading="lazy"
-                placeholder="blur"
-                blurDataURL={IMAGE_BLUR_DATA_URL}
-                className="object-cover opacity-50"
-              />
-            </div>
-
-            {/* Scrim */}
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(to top, rgba(0,20,16,0.92) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)' }}
-            />
-
-            {/* Content */}
-            <div className="relative h-full flex flex-col justify-end p-8 md:p-16 max-w-4xl">
               <div
-                className={`transform transition-all duration-700 delay-200 ${index === activeSlide ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
+                className={`absolute inset-0 transition-transform duration-[10s] ease-linear ${index === currentSlideIndex ? 'scale-110' : 'scale-100'
                   }`}
               >
-                {/* Assist Chip */}
-                <span
-                  className="inline-flex items-center px-4 py-1.5 rounded-full mb-5 md-label-medium uppercase tracking-widest"
-                  style={{ background: 'var(--md-primary-container)', color: 'var(--md-on-primary-container)' }}
-                >
-                  محتوى مميز
-                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={slide.imageUrl}
+                  alt={slide.title}
+                  loading={index === currentSlideIndex ? 'eager' : 'lazy'}
+                  decoding="async"
+                  className="h-full w-full object-cover opacity-50"
+                />
+              </div>
 
-                <h1
-                  className="md-display-medium font-extrabold text-white mb-4 leading-tight"
-                  style={{ fontFamily: 'var(--md-font-brand)' }}
-                >
-                  {slide.title}
-                </h1>
-                <p
-                  className="md-title-large mb-8 max-w-2xl leading-relaxed"
-                  style={{ color: 'var(--md-primary-container)', fontWeight: 400 }}
-                >
-                  {slide.subtitle}
-                </p>
+              <div
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to top, rgba(0,20,16,0.92) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)' }}
+              />
 
-                {/* Filled Button — large */}
-                <button
-                  onClick={() => onNavigate(slide.target)}
-                  className="md-btn md-btn-filled md-btn-lg flex items-center gap-3"
-                  style={{ background: 'white', color: '#003730' }}
+              <div className="relative h-full flex flex-col justify-end p-8 md:p-16 max-w-4xl">
+                <div
+                  className={`transform transition-all duration-700 delay-200 ${index === currentSlideIndex ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
+                    }`}
                 >
-                  {slide.cta}
-                  <ArrowLeft size={20} />
-                </button>
+                  <span
+                    className="inline-flex items-center px-4 py-1.5 rounded-full mb-5 md-label-medium uppercase tracking-widest"
+                    style={{ background: 'var(--md-primary-container)', color: 'var(--md-on-primary-container)' }}
+                  >
+                    محتوى مميز
+                  </span>
+
+                  <h1
+                    className="md-display-medium font-extrabold text-white mb-4 leading-tight"
+                    style={{ fontFamily: 'var(--md-font-brand)' }}
+                  >
+                    {slide.title}
+                  </h1>
+                  <p
+                    className="md-title-large mb-8 max-w-2xl leading-relaxed"
+                    style={{ color: 'var(--md-primary-container)', fontWeight: 400 }}
+                  >
+                    {slide.subtitle}
+                  </p>
+
+                  <button
+                    onClick={() => onNavigate(slide.target)}
+                    className="md-btn md-btn-filled md-btn-lg flex items-center gap-3"
+                    style={{ background: 'white', color: '#003730' }}
+                  >
+                    {slide.ctaLabel}
+                    <ArrowLeft size={20} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-
-        {/* Arrow Buttons */}
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-4 md:px-8 z-20 pointer-events-none">
-          <button
-            onClick={prevSlide}
-            className="pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center text-white border transition-all"
-            style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.24)' }}
-            aria-label="السابق"
-          >
-            <ChevronRight size={28} />
-          </button>
-          <button
-            onClick={nextSlide}
-            className="pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center text-white border transition-all"
-            style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.24)' }}
-            aria-label="التالي"
-          >
-            <ChevronLeft size={28} />
-          </button>
-        </div>
-
-        {/* Dot Indicators */}
-        <div className="absolute bottom-6 right-1/2 translate-x-1/2 flex gap-2 z-20">
-          {FEATURED_SLIDES.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setActiveSlide(idx)}
-              className="h-2 rounded-full transition-all duration-300"
-              style={{
-                width: idx === activeSlide ? '24px' : '8px',
-                background: idx === activeSlide ? 'var(--md-primary-container)' : 'rgba(255,255,255,0.4)',
-              }}
-              aria-label={`الشريحة ${idx + 1}`}
-            />
           ))}
-        </div>
-      </section>
+
+          {hasCarouselControls ? (
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-4 md:px-8 z-20 pointer-events-none">
+              <button
+                onClick={prevSlide}
+                className="pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center text-white border transition-all"
+                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.24)' }}
+                aria-label="السابق"
+              >
+                <ChevronRight size={28} />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="pointer-events-auto w-12 h-12 rounded-full flex items-center justify-center text-white border transition-all"
+                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.24)' }}
+                aria-label="التالي"
+              >
+                <ChevronLeft size={28} />
+              </button>
+            </div>
+          ) : null}
+
+          {hasCarouselControls ? (
+            <div className="absolute bottom-6 right-1/2 translate-x-1/2 flex gap-2 z-20">
+              {heroSlides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveSlide(idx)}
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: idx === currentSlideIndex ? '24px' : '8px',
+                    background: idx === currentSlideIndex ? 'var(--md-primary-container)' : 'rgba(255,255,255,0.4)',
+                  }}
+                  aria-label={`الشريحة ${idx + 1}`}
+                />
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* ── Quick Search Bar ──────────────────────────────────────── */}
       <div ref={searchRef} className="relative w-full max-w-2xl mx-auto">
@@ -286,7 +261,7 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, onNavigat
                 >
                   <Search size={26} />
                 </div>
-                <p className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>لا توجد نتائج لـ "{trimmed}"</p>
+                <p className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>لا توجد نتائج لـ &quot;{trimmed}&quot;</p>
                 <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>جرب كلمات بحث مختلفة</p>
               </div>
             ) : (
@@ -424,7 +399,7 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, onNavigat
                   style={{ background: 'var(--md-surface-container)', borderTop: '1px solid var(--md-outline-variant)' }}
                 >
                   <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    {totalResults} نتيجة لـ "{trimmed}"
+                    {totalResults} نتيجة لـ &quot;{trimmed}&quot;
                   </p>
                 </div>
               </div>

@@ -395,6 +395,45 @@ export type Database = {
           },
         ];
       };
+      home_carousel_slides: {
+        Row: {
+          created_at: string;
+          cta_label: string;
+          id: string;
+          image_url: string;
+          sort_order: number;
+          status: string;
+          subtitle: string;
+          target: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          cta_label: string;
+          id?: string;
+          image_url: string;
+          sort_order?: number;
+          status?: string;
+          subtitle: string;
+          target: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          cta_label?: string;
+          id?: string;
+          image_url?: string;
+          sort_order?: number;
+          status?: string;
+          subtitle?: string;
+          target?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

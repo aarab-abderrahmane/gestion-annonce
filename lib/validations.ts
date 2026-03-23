@@ -17,6 +17,23 @@ export const breakingNewsSchema = z.object({
   expires_at: nonEmptyString.refine((value) => !Number.isNaN(Date.parse(value)), 'تاريخ الانتهاء غير صالح.'),
 });
 
+export const homeCarouselTargetSchema = z.enum([
+  'home',
+  'announcements',
+  'important-info',
+  'events',
+]);
+
+export const homeCarouselSlideSchema = z.object({
+  title: nonEmptyString.max(200, 'العنوان طويل جداً.'),
+  subtitle: nonEmptyString.max(280, 'الوصف طويل جداً.'),
+  image_url: z.string().trim().url('رابط الصورة غير صالح.').optional().or(z.literal('')),
+  cta_label: nonEmptyString.max(80, 'نص الزر طويل جداً.'),
+  target: homeCarouselTargetSchema,
+  sort_order: z.coerce.number().int().min(1, 'الترتيب يجب أن يكون 1 أو أكثر.'),
+  status: contentStatusSchema,
+});
+
 export const adminLoginSchema = z.object({
   email: z.string().trim().email('البريد الإلكتروني غير صالح.'),
   password: nonEmptyString,
@@ -168,5 +185,6 @@ export function getFirstZodError(error: z.ZodError) {
 }
 
 export type BreakingNewsFormValues = z.infer<typeof breakingNewsSchema>;
+export type HomeCarouselSlideFormValues = z.infer<typeof homeCarouselSlideSchema>;
 export type AnnouncementFormValues = z.infer<typeof announcementSchema>;
 export type EventFormValues = z.infer<typeof eventSchema>;

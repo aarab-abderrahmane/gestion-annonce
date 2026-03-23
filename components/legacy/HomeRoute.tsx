@@ -2,9 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import Home from "@/components/legacy/Home";
-import type { Announcement, Event, NewsAlert } from "@/types";
+import type { Announcement, Event, HomeCarouselSlide, NewsAlert } from "@/types";
 
-export default function HomeRoute({ announcements, newsItems, events }: { announcements: Announcement[]; newsItems: NewsAlert[]; events: Event[] }) {
+export default function HomeRoute({
+  announcements,
+  newsItems,
+  events,
+  slides = [],
+}: {
+  announcements: Announcement[];
+  newsItems: NewsAlert[];
+  events: Event[];
+  slides?: HomeCarouselSlide[];
+}) {
   const router = useRouter();
 
   return (
@@ -12,6 +22,7 @@ export default function HomeRoute({ announcements, newsItems, events }: { announ
       announcements={announcements}
       newsItems={newsItems}
       events={events}
+      slides={slides}
       onNavigate={(page) => {
         if (page === "home") return router.push("/");
         if (page === "announcements") return router.push("/announcements");

@@ -1,6 +1,7 @@
 export const ANNOUNCEMENTS_BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'announcements';
 export const EVENTS_BUCKET = 'events';
+export const HOME_CAROUSEL_BUCKET = 'home-carousel';
 
 export function getStorageErrorMessage(
   message: string,

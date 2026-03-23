@@ -1,8 +1,13 @@
 import { json, requireAdminUser } from '@/app/api/_utils'
-import { ANNOUNCEMENTS_BUCKET, EVENTS_BUCKET } from '@/lib/storage'
+import {
+  ANNOUNCEMENTS_BUCKET,
+  EVENTS_BUCKET,
+  getStorageErrorMessage,
+  HOME_CAROUSEL_BUCKET,
+} from '@/lib/storage'
 import { validateUploadFile } from '@/lib/validations'
 
-const allowedBuckets = new Set([ANNOUNCEMENTS_BUCKET, EVENTS_BUCKET])
+const allowedBuckets = new Set([ANNOUNCEMENTS_BUCKET, EVENTS_BUCKET, HOME_CAROUSEL_BUCKET])
 
 export async function POST(request: Request) {
   const auth = await requireAdminUser()
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
   })
 
   if (error) {
-    return json({ error: error.message }, { status: 500 })
+    return json({ error: getStorageErrorMessage(error.message, bucket) }, { status: 500 })
   }
 
   const { data } = auth.supabase.storage.from(bucket).getPublicUrl(path)

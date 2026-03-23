@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BellRing, Building2, CalendarDays, FolderTree, House, Newspaper, Megaphone, Settings } from 'lucide-react';
+import { BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Megaphone, Settings } from 'lucide-react';
 
 const items = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: House },
   { href: '/dashboard/breaking-news', label: 'أخبار عاجلة', icon: BellRing },
+  { href: '/dashboard/home-carousel', label: 'كاروسيل الرئيسية', icon: Images },
   { href: '/dashboard/announcements', label: 'الإعلانات', icon: Newspaper },
   { href: '/dashboard/events', label: 'الفعاليات', icon: CalendarDays },
   { href: '/dashboard/categories', label: 'الأصناف', icon: FolderTree },

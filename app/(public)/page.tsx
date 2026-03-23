@@ -5,6 +5,7 @@ import HomeRoute from '@/components/legacy/HomeRoute';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
 import { collectErrorMessages } from '@/lib/errors';
+import { normalizeHomeCarouselSlide } from '@/lib/home-carousel';
 import {
   normalizeAnnouncement,
   normalizeEvent,
@@ -23,7 +24,12 @@ export const metadata: Metadata = buildPublicMetadata({
 export default async function Page() {
   const supabase = await createClient();
 
-  const [{ data: breakingNewsData, error: newsError }, { data: announcementsData, error: announcementsError }, { data: eventsData, error: eventsError }] = await Promise.all([
+  const [
+    { data: breakingNewsData, error: newsError },
+    { data: announcementsData, error: announcementsError },
+    { data: eventsData, error: eventsError },
+    { data: slidesData, error: slidesError },
+  ] = await Promise.all([
     supabase
       .from('breaking_news')
       .select('id, title, slug, level, status, created_at, expires_at')
@@ -49,6 +55,12 @@ export default async function Page() {
       `)
       .eq('status', 'published')
       .order('starts_at', { ascending: false }),
+    supabase
+      .from('home_carousel_slides')
+      .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at')
+      .eq('status', 'published')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
   ]);
 
   const announcementFileErrors: string[] = [];
@@ -64,16 +76,18 @@ export default async function Page() {
     newsError,
     announcementsError,
     eventsError,
+    slidesError,
     ...announcementFileErrors,
   ]);
   const news = (breakingNewsData ?? []).map(normalizeNews);
   const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const events = (eventsData ?? []).map(normalizeEvent);
+  const slides = (slidesData ?? []).map(normalizeHomeCarouselSlide);
 
   return (
     <>
       <ErrorToastTrigger messages={pageErrors} />
-      <HomeRoute announcements={announcements} newsItems={news} events={events} />
+      <HomeRoute announcements={announcements} newsItems={news} events={events} slides={slides} />
     </>
   );
 }

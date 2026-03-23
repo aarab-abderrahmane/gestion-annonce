@@ -4,6 +4,7 @@ export type BreakingNewsLevel = 'dangerous' | 'urgent' | 'warning';
 export type AnnouncementFileType = 'pdf' | 'image';
 export type EventPersonType = 'participant' | 'organizer';
 export type SearchResultType = 'announcement' | 'event' | 'breaking-news';
+export type HomeCarouselTarget = 'home' | 'announcements' | 'important-info' | 'events';
 
 export interface Division {
   id: string;
@@ -65,6 +66,19 @@ export interface BreakingNews {
 }
 
 export type NewsAlert = BreakingNews;
+
+export interface HomeCarouselSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  ctaLabel: string;
+  target: HomeCarouselTarget;
+  sortOrder?: number;
+  status?: ContentStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface Announcement {
   id: string;
