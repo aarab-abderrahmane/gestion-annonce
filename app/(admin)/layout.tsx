@@ -1,5 +1,4 @@
-import AdminHeader from '@/components/admin/AdminHeader';
-import Sidebar from '@/components/admin/Sidebar';
+import AdminShell from '@/components/admin/AdminShell';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function AdminGroupLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -18,17 +17,6 @@ export default async function AdminGroupLayout({ children }: Readonly<{ children
   }
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: 'var(--md-surface)', color: 'var(--md-on-surface)', fontFamily: 'var(--md-font-brand)' }}
-    >
-      <div className="mx-auto flex max-w-[1600px]">
-        <Sidebar />
-        <div className="flex min-h-screen flex-1 flex-col overflow-hidden">
-          <AdminHeader email={user.email ?? ''} />
-          <main className="flex-1 space-y-6 p-4 md:p-6">{children}</main>
-        </div>
-      </div>
-    </div>
+    <AdminShell email={user.email ?? ''}>{children}</AdminShell>
   );
 }

@@ -2,11 +2,12 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 
 const titleMap: Record<string, string> = {
   '/dashboard': 'لوحة التحكم',
   '/dashboard/breaking-news': 'أخبار عاجلة',
+  '/dashboard/home-carousel': 'كاروسيل الرئيسية',
   '/dashboard/announcements': 'الإعلانات',
   '/dashboard/events': 'الفعاليات',
   '/dashboard/categories': 'الأصناف',
@@ -14,7 +15,15 @@ const titleMap: Record<string, string> = {
   '/dashboard/settings': 'الإعدادات',
 };
 
-export default function AdminHeader({ email }: { email: string }) {
+export default function AdminHeader({
+  email,
+  onMenuToggle,
+  menuOpen = false,
+}: {
+  email: string;
+  onMenuToggle?: () => void;
+  menuOpen?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const title =
@@ -26,20 +35,23 @@ export default function AdminHeader({ email }: { email: string }) {
 
   return (
     <header
-      className="flex items-center justify-between px-4 py-3 mb-6"
+      className="relative z-20 flex shrink-0 items-center justify-between px-4 py-3"
       style={{
         background: 'var(--md-surface-container-low)',
         borderBottom: '1px solid var(--md-outline-variant)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
       }}
     >
       {/* Leading – page title */}
       <div className="flex items-center gap-2">
-        {/* Mobile hamburger (purely decorative placeholder; sidebar is mobile-hidden) */}
-        <button className="md-icon-btn lg:hidden">
-          <Menu size={24} />
+        <button
+          type="button"
+          className="md-icon-btn"
+          onClick={onMenuToggle}
+          aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
+          aria-expanded={menuOpen}
+          aria-controls="admin-sidebar"
+        >
+          {menuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         <h1 className="md-title-large" style={{ color: 'var(--md-on-surface)' }}>
           {title}
