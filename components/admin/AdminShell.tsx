@@ -70,7 +70,7 @@ export default function AdminShell({
       className="h-screen overflow-hidden"
       style={{ background: 'var(--md-surface)', color: 'var(--md-on-surface)', fontFamily: 'var(--md-font-brand)' }}
     >
-      <div className="mx-auto flex h-full max-w-[1600px] items-stretch overflow-hidden">
+      <div className="mx-auto flex h-full w-full items-stretch overflow-hidden">
         <div
           className={`hidden shrink-0 self-stretch overflow-hidden transition-[width] duration-300 ease-out lg:block ${
             desktopMenuOpen ? 'w-[280px]' : 'w-0'

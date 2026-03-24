@@ -202,6 +202,7 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
     }
 
     setSaving(true);
+    let createdEventId: string | null = null;
 
     try {
       const parsed = validation.data;
@@ -224,6 +225,7 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
         const { data, error: insertError } = await supabase.from('events').insert({ ...payloadBase, cover_image: coverImageUrl }).select('id').single();
         if (insertError || !data) throw new Error(insertError?.message ?? 'Failed to create event');
         eventId = data.id;
+        createdEventId = data.id;
       } else {
         const { error: updateError } = await supabase.from('events').update({ ...payloadBase, cover_image: coverImageUrl }).eq('id', id);
         if (updateError) throw new Error(updateError.message);
@@ -265,6 +267,16 @@ export default function EventForm({ mode, categories, initialValues, id }: Props
       router.push('/dashboard/events');
       router.refresh();
     } catch (submitError) {
+      if (mode === 'create' && createdEventId) {
+        const { error: rollbackError } = await supabase.from('events').delete().eq('id', createdEventId);
+        if (rollbackError) {
+          const rollbackMessage = submitError instanceof Error ? `${submitError.message} | Rollback failed: ${rollbackError.message}` : `Rollback failed: ${rollbackError.message}`;
+          setError(rollbackMessage);
+          setSaving(false);
+          return;
+        }
+      }
+
       setError(submitError instanceof Error ? submitError.message : 'Unexpected error');
       setSaving(false);
       return;
