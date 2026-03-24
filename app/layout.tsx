@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ServiceWorkerRegistration from "@/components/shared/ServiceWorkerRegistration";
+import NetworkIndicator from "@/components/ui/NetworkIndicator";
 import ToastProvider from "@/components/ui/ToastProvider";
 import { getSiteUrl, SITE_TITLE } from "@/lib/site";
 import "./globals.css";
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <ToastProvider>
           <ServiceWorkerRegistration />
+          <NetworkIndicator />
           {children}
         </ToastProvider>
       </body>
