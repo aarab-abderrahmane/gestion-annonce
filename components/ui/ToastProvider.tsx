@@ -172,8 +172,9 @@ export default function ToastProvider({ children }: Readonly<{ children: React.R
       <div
         className="pointer-events-none fixed z-[9999] flex flex-col gap-3 px-4"
         style={{
-          insetBlockStart: 16,
-          insetInlineStart: 16,
+          top: 16,
+          left: '50%',
+          transform: 'translateX(-50%)',
           width: 'min(24rem, calc(100vw - 2rem))',
         }}
       >
