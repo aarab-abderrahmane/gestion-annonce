@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Building2, FolderTree, Plus, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useErrorToast } from '@/components/ui/useErrorToast';
+import type { ResourcePermissionState } from '@/lib/admin-permissions';
 import { categoryFormSchema, getFirstZodError } from '@/lib/validations';
 
 type Division = { id: string; name: string; slug: string };
@@ -13,6 +14,7 @@ type Group = { id: string; name: string; slug: string; division_id: string };
 type Props = {
   divisions: Division[];
   groups: Group[];
+  permissions: ResourcePermissionState;
 };
 
 function slugify(value: string) {
@@ -71,9 +73,13 @@ function EmptyState({ message }: { message: string }) {
 function DivisionsSection({
   rows,
   groups,
+  canCreate,
+  canDelete,
 }: {
   rows: Division[];
   groups: Group[];
+  canCreate: boolean;
+  canDelete: boolean;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -141,7 +147,11 @@ function DivisionsSection({
     <SectionShell
       icon={<Building2 size={20} />}
       title="الأقسام"
-      description="إدارة الأقسام الرئيسية التي تُستخدم لتنظيم الإعلانات والمجموعات."
+      description={
+        canCreate || canDelete
+          ? 'إدارة الأقسام الرئيسية التي تُستخدم لتنظيم الإعلانات والمجموعات.'
+          : 'عرض الأقسام الحالية فقط.'
+      }
     >
       <div className="space-y-2">
         {rows.length === 0 ? (
@@ -164,44 +174,48 @@ function DivisionsSection({
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => void handleDelete(row.id)}
-              disabled={deletingId === row.id}
-              className="md-icon-btn disabled:opacity-50"
-              style={{ color: 'var(--md-error)' }}
-              title="حذف"
-            >
-              {deletingId === row.id ? '...' : <Trash2 size={18} />}
-            </button>
+            {canDelete ? (
+              <button
+                type="button"
+                onClick={() => void handleDelete(row.id)}
+                disabled={deletingId === row.id}
+                className="md-icon-btn disabled:opacity-50"
+                style={{ color: 'var(--md-error)' }}
+                title="حذف"
+              >
+                {deletingId === row.id ? '...' : <Trash2 size={18} />}
+              </button>
+            ) : null}
           </div>
         ))}
       </div>
 
-      <form onSubmit={handleAdd} className="flex gap-2">
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="أضف قسماً جديداً"
-          className="flex-1 md-body-medium px-4 h-10 rounded-[var(--md-shape-s)] border outline-none transition-colors"
-          style={{
-            background: 'var(--md-surface-container-lowest)',
-            borderColor: 'var(--md-outline)',
-            color: 'var(--md-on-surface)',
-          }}
-          onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-          onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="md-btn md-btn-filled md-state disabled:opacity-50"
-          style={{ height: 40, padding: '0 16px', fontSize: 14 }}
-        >
-          <Plus size={16} />
-          {submitting ? '...' : 'إضافة'}
-        </button>
-      </form>
+      {canCreate ? (
+        <form onSubmit={handleAdd} className="flex gap-2">
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="أضف قسماً جديداً"
+            className="flex-1 md-body-medium px-4 h-10 rounded-[var(--md-shape-s)] border outline-none transition-colors"
+            style={{
+              background: 'var(--md-surface-container-lowest)',
+              borderColor: 'var(--md-outline)',
+              color: 'var(--md-on-surface)',
+            }}
+            onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
+            onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="md-btn md-btn-filled md-state disabled:opacity-50"
+            style={{ height: 40, padding: '0 16px', fontSize: 14 }}
+          >
+            <Plus size={16} />
+            {submitting ? '...' : 'إضافة'}
+          </button>
+        </form>
+      ) : null}
 
       {error ? (
         <p
@@ -218,9 +232,13 @@ function DivisionsSection({
 function GroupsSection({
   divisions,
   rows,
+  canCreate,
+  canDelete,
 }: {
   divisions: Division[];
   rows: Group[];
+  canCreate: boolean;
+  canDelete: boolean;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -291,7 +309,11 @@ function GroupsSection({
     <SectionShell
       icon={<FolderTree size={20} />}
       title="المجموعات"
-      description="أضف مجموعات فرعية واربط كل مجموعة بالقسم المناسب لها."
+      description={
+        canCreate || canDelete
+          ? 'أضف مجموعات فرعية واربط كل مجموعة بالقسم المناسب لها.'
+          : 'عرض المجموعات الحالية فقط.'
+      }
     >
       <div className="space-y-2">
         {rows.length === 0 ? (
@@ -314,21 +336,24 @@ function GroupsSection({
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => void handleDelete(row.id)}
-              disabled={deletingId === row.id}
-              className="md-icon-btn disabled:opacity-50"
-              style={{ color: 'var(--md-error)' }}
-              title="حذف"
-            >
-              {deletingId === row.id ? '...' : <Trash2 size={18} />}
-            </button>
+            {canDelete ? (
+              <button
+                type="button"
+                onClick={() => void handleDelete(row.id)}
+                disabled={deletingId === row.id}
+                className="md-icon-btn disabled:opacity-50"
+                style={{ color: 'var(--md-error)' }}
+                title="حذف"
+              >
+                {deletingId === row.id ? '...' : <Trash2 size={18} />}
+              </button>
+            ) : null}
           </div>
         ))}
       </div>
 
-      <form onSubmit={handleAdd} className="grid gap-2 md:grid-cols-[220px_1fr_auto]">
+      {canCreate ? (
+        <form onSubmit={handleAdd} className="grid gap-2 md:grid-cols-[220px_1fr_auto]">
         <select
           value={divisionId}
           onChange={(event) => setDivisionId(event.target.value)}
@@ -371,7 +396,8 @@ function GroupsSection({
           <Plus size={16} />
           {submitting ? '...' : 'إضافة'}
         </button>
-      </form>
+        </form>
+      ) : null}
 
       {error ? (
         <p
@@ -385,7 +411,7 @@ function GroupsSection({
   );
 }
 
-export default function StructureManager({ divisions, groups }: Props) {
+export default function StructureManager({ divisions, groups, permissions }: Props) {
   return (
     <div className="space-y-6">
       <section
@@ -399,8 +425,18 @@ export default function StructureManager({ divisions, groups }: Props) {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <DivisionsSection rows={divisions} groups={groups} />
-        <GroupsSection divisions={divisions} rows={groups} />
+        <DivisionsSection
+          rows={divisions}
+          groups={groups}
+          canCreate={permissions.create}
+          canDelete={permissions.delete}
+        />
+        <GroupsSection
+          divisions={divisions}
+          rows={groups}
+          canCreate={permissions.create}
+          canDelete={permissions.delete}
+        />
       </div>
     </div>
   );

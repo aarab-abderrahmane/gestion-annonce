@@ -1,4 +1,4 @@
-import { json, requireAdminUser } from '@/app/api/_utils'
+import { json, requireAnyAdminPermission } from '@/app/api/_utils'
 import {
   ANNOUNCEMENTS_BUCKET,
   EVENTS_BUCKET,
@@ -8,11 +8,22 @@ import {
 import { validateUploadFile } from '@/lib/validations'
 
 const allowedBuckets = new Set([ANNOUNCEMENTS_BUCKET, EVENTS_BUCKET, HOME_CAROUSEL_BUCKET])
+const bucketPermissionChecks = {
+  [ANNOUNCEMENTS_BUCKET]: [
+    { resource: 'announcements', action: 'create' },
+    { resource: 'announcements', action: 'update' },
+  ],
+  [EVENTS_BUCKET]: [
+    { resource: 'events', action: 'create' },
+    { resource: 'events', action: 'update' },
+  ],
+  [HOME_CAROUSEL_BUCKET]: [
+    { resource: 'home_carousel', action: 'create' },
+    { resource: 'home_carousel', action: 'update' },
+  ],
+} as const;
 
 export async function POST(request: Request) {
-  const auth = await requireAdminUser()
-  if (auth.response) return auth.response
-
   const formData = await request.formData()
   const bucket = formData.get('bucket')
   const file = formData.get('file')
@@ -28,6 +39,9 @@ export async function POST(request: Request) {
   if (typeof bucket !== 'string' || !allowedBuckets.has(bucket)) {
     return json({ error: 'Invalid bucket' }, { status: 400 })
   }
+
+  const auth = await requireAnyAdminPermission([...bucketPermissionChecks[bucket]])
+  if (auth.response) return auth.response
 
   if (!(file instanceof File)) {
     return json({ error: 'file is required' }, { status: 400 })

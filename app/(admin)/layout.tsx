@@ -1,22 +1,21 @@
 import AdminShell from '@/components/admin/AdminShell';
-import { createClient } from '@/lib/supabase/server';
+import { getAdminAccess } from '@/lib/admin-access';
 
 export default async function AdminGroupLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const access = await getAdminAccess();
 
-  if (!user) {
-    return children;
-  }
-
-  const { data: isAdmin, error } = await supabase.rpc('is_admin');
-  if (error || !isAdmin) {
+  if (!access?.hasDashboardAccess) {
     return children;
   }
 
   return (
-    <AdminShell email={user.email ?? ''}>{children}</AdminShell>
+    <AdminShell
+      email={access.email}
+      displayName={access.displayName}
+      isFullAdmin={access.isFullAdmin}
+      navigationItems={access.navigationItems}
+    >
+      {children}
+    </AdminShell>
   );
 }

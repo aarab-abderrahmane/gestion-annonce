@@ -1,15 +1,14 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import LoginForm from '@/components/admin/LoginForm';
-import { createClient } from '@/lib/supabase/server';
+import { getAdminAccess } from '@/lib/admin-access';
 import { ShieldCheck } from 'lucide-react';
 
 export default async function LoginPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    const { data: isAdmin, error } = await supabase.rpc('is_admin');
-    if (!error && isAdmin) redirect('/dashboard');
+  const access = await getAdminAccess();
+
+  if (access?.hasDashboardAccess) {
+    redirect(access.isFullAdmin ? '/dashboard' : access.firstAccessiblePath ?? '/dashboard');
   }
 
   return (

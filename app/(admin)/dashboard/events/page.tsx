@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import EventsTable from '@/components/admin/EventsTable';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
@@ -31,6 +32,7 @@ function getCategoryRecord(record?: EventCategory | EventCategory[] | null) {
 }
 
 export default async function EventsAdminPage() {
+  const access = await requireAdminPageAccess('events');
   const supabase = await createClient();
 
   const [{ data: events, error: eventsError }, { data: categories, error: categoriesError }] = await Promise.all([
@@ -82,12 +84,15 @@ export default async function EventsAdminPage() {
           <h2 className="text-2xl font-black text-[#123c3a]">Events</h2>
           <p className="mt-1 text-sm text-[#6d7f82]">Manage event categories, people, photos, and publishing state.</p>
         </div>
-        <Link href="/dashboard/events/create" className="rounded-2xl bg-[#123c3a] px-4 py-3 text-sm font-semibold text-white">Ajouter</Link>
+        {access.permissions.events.create ? (
+          <Link href="/dashboard/events/create" className="rounded-2xl bg-[#123c3a] px-4 py-3 text-sm font-semibold text-white">Ajouter</Link>
+        ) : null}
       </div>
       <div className="p-6">
         <EventsTable
           rows={rows}
           categories={(categories ?? []).map((category) => ({ label: category.name, value: category.slug }))}
+          permissions={access.permissions.events}
         />
       </div>
     </section>

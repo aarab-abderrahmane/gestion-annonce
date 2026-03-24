@@ -1,7 +1,8 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import AnnouncementForm from '@/components/admin/forms/AnnouncementForm';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
@@ -26,6 +27,7 @@ type EditableAnnouncementRow = {
 };
 
 export default async function EditAnnouncementPage({ params }: { params: Promise<{ id: string }> }) {
+  const access = await requireAdminPageAccess('announcements', 'update');
   const { id } = await params;
   const supabase = await createClient();
 
@@ -72,6 +74,10 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
     notFound();
   }
 
+  if (announcement.status === 'published' && !access.permissions.announcements.publish) {
+    redirect('/dashboard/announcements');
+  }
+
   const announcementFileErrors: string[] = [];
   const [announcementWithFiles] = await hydrateAnnouncementFiles(
     supabase as never,
@@ -97,6 +103,7 @@ export default async function EditAnnouncementPage({ params }: { params: Promise
           divisions={divisions ?? []}
           groups={groups ?? []}
           categories={categories ?? []}
+          canPublish={access.permissions.announcements.publish}
           initialValues={{
             title: announcement.title ?? '',
             slug: announcement.slug ?? '',

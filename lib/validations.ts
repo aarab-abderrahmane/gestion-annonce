@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  ADMIN_ACCOUNT_STATUS_VALUES,
+  ADMIN_RESOURCE_VALUES,
+} from '@/lib/admin-permissions';
 
 const contentStatusSchema = z.enum(['draft', 'published']);
 const nonEmptyString = z.string().trim().min(1, 'هذا الحقل مطلوب.');
@@ -41,6 +45,84 @@ export const adminLoginSchema = z.object({
 
 export const adminSettingsSchema = z.object({
   email: z.string().trim().email('البريد الإلكتروني غير صالح.').optional().or(z.literal('')),
+  password: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(''))
+    .refine((value) => !value || value.length >= 6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'),
+});
+
+export const dashboardAccountStatusSchema = z.enum(ADMIN_ACCOUNT_STATUS_VALUES);
+export const dashboardAccountResourceSchema = z.enum(ADMIN_RESOURCE_VALUES);
+
+export const dashboardAccountPermissionSchema = z
+  .object({
+    resource: dashboardAccountResourceSchema,
+    can_view: z.boolean().default(true),
+    can_create: z.boolean().default(false),
+    can_update: z.boolean().default(false),
+    can_delete: z.boolean().default(false),
+    can_publish: z.boolean().default(false),
+  })
+  .refine(
+    (value) =>
+      value.can_view ||
+      value.can_create ||
+      value.can_update ||
+      value.can_delete ||
+      value.can_publish,
+    {
+      message: 'اختر صفحة واحدة على الأقل قبل حفظ الصلاحيات.',
+      path: ['can_view'],
+    },
+  );
+
+const dashboardAccountPermissionsSchema = z
+  .array(dashboardAccountPermissionSchema)
+  .min(1, 'اختر صفحة واحدة على الأقل لهذا الحساب.')
+  .superRefine((permissions, ctx) => {
+    const seen = new Set<string>();
+
+    permissions.forEach((permission, index) => {
+      if (seen.has(permission.resource)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'لا يمكن تكرار الصفحة نفسها أكثر من مرة.',
+          path: [index, 'resource'],
+        });
+      }
+
+      seen.add(permission.resource);
+
+      if (
+        (permission.can_create ||
+          permission.can_update ||
+          permission.can_delete ||
+          permission.can_publish) &&
+        !permission.can_view
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'صلاحيات التعديل والحذف والنشر تتطلب تفعيل الوصول إلى الصفحة.',
+          path: [index, 'can_view'],
+        });
+      }
+    });
+  });
+
+const dashboardAccountBaseSchema = z.object({
+  full_name: nonEmptyString.max(120, 'الاسم طويل جداً.'),
+  email: z.string().trim().email('البريد الإلكتروني غير صالح.'),
+  status: dashboardAccountStatusSchema,
+  permissions: dashboardAccountPermissionsSchema,
+});
+
+export const managedDashboardAccountCreateSchema = dashboardAccountBaseSchema.extend({
+  password: z.string().trim().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'),
+});
+
+export const managedDashboardAccountUpdateSchema = dashboardAccountBaseSchema.extend({
   password: z
     .string()
     .trim()
@@ -188,3 +270,5 @@ export type BreakingNewsFormValues = z.infer<typeof breakingNewsSchema>;
 export type HomeCarouselSlideFormValues = z.infer<typeof homeCarouselSlideSchema>;
 export type AnnouncementFormValues = z.infer<typeof announcementSchema>;
 export type EventFormValues = z.infer<typeof eventSchema>;
+export type ManagedDashboardAccountCreateValues = z.infer<typeof managedDashboardAccountCreateSchema>;
+export type ManagedDashboardAccountUpdateValues = z.infer<typeof managedDashboardAccountUpdateSchema>;

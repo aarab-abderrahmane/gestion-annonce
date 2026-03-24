@@ -3,11 +3,21 @@
 import { useEffect, useState } from 'react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import Sidebar from '@/components/admin/Sidebar';
+import type { AdminNavItem } from '@/lib/admin-permissions';
 
 export default function AdminShell({
   email,
+  displayName,
+  isFullAdmin,
+  navigationItems,
   children,
-}: Readonly<{ email: string; children: React.ReactNode }>) {
+}: Readonly<{
+  email: string;
+  displayName?: string;
+  isFullAdmin?: boolean;
+  navigationItems: AdminNavItem[];
+  children: React.ReactNode;
+}>) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(true);
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
@@ -76,10 +86,12 @@ export default function AdminShell({
             desktopMenuOpen ? 'w-[280px]' : 'w-0'
           }`}
         >
-          <Sidebar variant="desktop" />
+          <Sidebar items={navigationItems} displayName={displayName} variant="desktop" />
         </div>
 
         <Sidebar
+          items={navigationItems}
+          displayName={displayName}
           variant="mobile"
           mobileOpen={mobileMenuOpen}
           onClose={() => setMobileMenuOpen(false)}
@@ -97,6 +109,8 @@ export default function AdminShell({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <AdminHeader
             email={email}
+            displayName={displayName}
+            isFullAdmin={isFullAdmin}
             onMenuToggle={handleMenuToggle}
             menuOpen={isDesktopViewport ? desktopMenuOpen : mobileMenuOpen}
           />

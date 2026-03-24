@@ -1,6 +1,9 @@
 import BreakingNewsForm from '@/components/admin/BreakingNewsForm';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 
-export default function CreateBreakingNewsPage() {
+export default async function CreateBreakingNewsPage() {
+  const access = await requireAdminPageAccess('breaking_news', 'create');
+
   return (
     <div className="space-y-6">
       <div>
@@ -9,6 +12,7 @@ export default function CreateBreakingNewsPage() {
       </div>
       <BreakingNewsForm
         mode="create"
+        canPublish={access.permissions.breaking_news.publish}
         initialValues={{
           title: '',
           slug: '',

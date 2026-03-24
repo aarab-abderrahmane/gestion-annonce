@@ -18,7 +18,12 @@ type FormValues = {
   expires_at: string;
 };
 
-type BreakingNewsFormProps = { mode: 'create' | 'edit'; initialValues: FormValues; id?: string };
+type BreakingNewsFormProps = {
+  mode: 'create' | 'edit';
+  initialValues: FormValues;
+  canPublish: boolean;
+  id?: string;
+};
 
 function slugify(value: string) {
   return value.trim().toLowerCase().normalize('NFD')
@@ -39,7 +44,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputCls = "w-full md-body-medium px-4 h-12 rounded-[var(--md-shape-s)] border outline-none transition-colors";
 const inputStyle = { background: 'var(--md-surface-container-lowest)', borderColor: 'var(--md-outline)', color: 'var(--md-on-surface)' };
 
-export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNewsFormProps) {
+export default function BreakingNewsForm({ mode, initialValues, canPublish, id }: BreakingNewsFormProps) {
   const router = useRouter();
   const supabase = createClient();
   const [values, setValues] = useState<FormValues>(initialValues);
@@ -145,7 +150,7 @@ export default function BreakingNewsForm({ mode, initialValues, id }: BreakingNe
             onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
           >
             <option value="draft">مسودة</option>
-            <option value="published">منشور</option>
+            {canPublish ? <option value="published">منشور</option> : null}
           </select>
         </Field>
 

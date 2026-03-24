@@ -5,10 +5,15 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useErrorToast } from '@/components/ui/useErrorToast';
 import { Plus, Trash2 } from 'lucide-react';
+import type { ResourcePermissionState } from '@/lib/admin-permissions';
 import { categoryFormSchema, getFirstZodError } from '@/lib/validations';
 
 type Category = { id: string; name: string; slug: string };
-type Props = { announcementCategories: Category[]; eventCategories: Category[] };
+type Props = {
+  announcementCategories: Category[];
+  eventCategories: Category[];
+  permissions: ResourcePermissionState;
+};
 
 function slugify(value: string) {
   return value
@@ -17,7 +22,19 @@ function slugify(value: string) {
     .replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
-function CategorySection({ title, table, rows }: { title: string; table: 'announcement_categories' | 'event_categories'; rows: Category[] }) {
+function CategorySection({
+  title,
+  table,
+  rows,
+  canCreate,
+  canDelete,
+}: {
+  title: string;
+  table: 'announcement_categories' | 'event_categories';
+  rows: Category[];
+  canCreate: boolean;
+  canDelete: boolean;
+}) {
   const supabase = createClient();
   const router = useRouter();
   const [name, setName] = useState('');
@@ -61,7 +78,7 @@ function CategorySection({ title, table, rows }: { title: string; table: 'announ
       <div>
         <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>{title}</h2>
         <p className="md-body-small mt-1" style={{ color: 'var(--md-on-surface-variant)' }}>
-          إضافة أو حذف الأصناف مباشرة.
+          {canCreate || canDelete ? 'إضافة أو حذف الأصناف مباشرة.' : 'عرض الأصناف الحالية فقط.'}
         </p>
       </div>
 
@@ -84,45 +101,48 @@ function CategorySection({ title, table, rows }: { title: string; table: 'announ
               <p className="md-body-medium font-semibold" style={{ color: 'var(--md-on-surface)' }}>{row.name}</p>
               <p className="md-label-small" style={{ color: 'var(--md-outline)' }}>{row.slug}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => void handleDelete(row.id)}
-              disabled={deletingId === row.id}
-              className="md-icon-btn disabled:opacity-50"
-              style={{ color: 'var(--md-error)' }}
-              title="حذف"
-            >
-              {deletingId === row.id ? '...' : <Trash2 size={18} />}
-            </button>
+            {canDelete ? (
+              <button
+                type="button"
+                onClick={() => void handleDelete(row.id)}
+                disabled={deletingId === row.id}
+                className="md-icon-btn disabled:opacity-50"
+                style={{ color: 'var(--md-error)' }}
+                title="حذف"
+              >
+                {deletingId === row.id ? '...' : <Trash2 size={18} />}
+              </button>
+            ) : null}
           </div>
         ))}
       </div>
 
-      {/* Add form */}
-      <form onSubmit={handleAdd} className="flex gap-2 mt-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="أضف صنفاً جديداً"
-          className="flex-1 md-body-medium px-4 h-10 rounded-[var(--md-shape-s)] border outline-none transition-colors"
-          style={{
-            background: 'var(--md-surface-container-lowest)',
-            borderColor: 'var(--md-outline)',
-            color: 'var(--md-on-surface)',
-          }}
-          onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
-          onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="md-btn md-btn-filled md-state disabled:opacity-50"
-          style={{ height: 40, padding: '0 16px', fontSize: 14 }}
-        >
-          <Plus size={16} />
-          {submitting ? '...' : 'إضافة'}
-        </button>
-      </form>
+      {canCreate ? (
+        <form onSubmit={handleAdd} className="mt-2 flex gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="أضف صنفاً جديداً"
+            className="flex-1 md-body-medium px-4 h-10 rounded-[var(--md-shape-s)] border outline-none transition-colors"
+            style={{
+              background: 'var(--md-surface-container-lowest)',
+              borderColor: 'var(--md-outline)',
+              color: 'var(--md-on-surface)',
+            }}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+            onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="md-btn md-btn-filled md-state disabled:opacity-50"
+            style={{ height: 40, padding: '0 16px', fontSize: 14 }}
+          >
+            <Plus size={16} />
+            {submitting ? '...' : 'إضافة'}
+          </button>
+        </form>
+      ) : null}
 
       {error && (
         <p
@@ -136,11 +156,27 @@ function CategorySection({ title, table, rows }: { title: string; table: 'announ
   );
 }
 
-export default function CategoriesManager({ announcementCategories, eventCategories }: Props) {
+export default function CategoriesManager({
+  announcementCategories,
+  eventCategories,
+  permissions,
+}: Props) {
   return (
     <div className="grid gap-6 xl:grid-cols-2">
-      <CategorySection title="أصناف الإعلانات" table="announcement_categories" rows={announcementCategories} />
-      <CategorySection title="أصناف الفعاليات" table="event_categories" rows={eventCategories} />
+      <CategorySection
+        title="أصناف الإعلانات"
+        table="announcement_categories"
+        rows={announcementCategories}
+        canCreate={permissions.create}
+        canDelete={permissions.delete}
+      />
+      <CategorySection
+        title="أصناف الفعاليات"
+        table="event_categories"
+        rows={eventCategories}
+        canCreate={permissions.create}
+        canDelete={permissions.delete}
+      />
     </div>
   );
 }

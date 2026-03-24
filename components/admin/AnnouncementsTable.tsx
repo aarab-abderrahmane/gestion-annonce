@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/ToastProvider';
 import { Filter } from 'lucide-react';
+import type { ResourcePermissionState } from '@/lib/admin-permissions';
 
 type Category = { id: string; name: string; slug: string };
 type Row = {
@@ -31,7 +32,17 @@ function extractStorageTarget(fileUrl: string) {
   return { bucket, path };
 }
 
-export default function AnnouncementsTable({ rows, divisions, categories }: { rows: Row[]; divisions: FilterOption[]; categories: FilterOption[] }) {
+export default function AnnouncementsTable({
+  rows,
+  divisions,
+  categories,
+  permissions,
+}: {
+  rows: Row[];
+  divisions: FilterOption[];
+  categories: FilterOption[];
+  permissions: ResourcePermissionState;
+}) {
   const supabase = createClient();
   const router = useRouter();
   const toast = useToast();
@@ -153,6 +164,7 @@ export default function AnnouncementsTable({ rows, divisions, categories }: { ro
               <tbody>
                 {filteredRows.map((row) => {
                   const isPublished = row.status === 'published';
+                  const canEdit = permissions.update && (!isPublished || permissions.publish);
                   return (
                     <tr
                       key={row.id}
@@ -197,29 +209,33 @@ export default function AnnouncementsTable({ rows, divisions, categories }: { ro
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
-                          <Link
-                            href={`/dashboard/announcements/${row.id}/edit`}
-                            className="md-btn md-btn-tonal md-state"
-                            style={{ height: 32, padding: '0 14px', fontSize: 13 }}
-                          >
-                            تعديل
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => void handleDelete(row)}
-                            disabled={deletingId === row.id}
-                            className="md-btn md-state disabled:opacity-50"
-                            style={{
-                              height: 32,
-                              padding: '0 14px',
-                              fontSize: 13,
-                              background: 'var(--md-error-container)',
-                              color: 'var(--md-on-error-container)',
-                              borderRadius: 'var(--md-shape-full)',
-                            }}
-                          >
-                            {deletingId === row.id ? '...' : 'حذف'}
-                          </button>
+                          {canEdit ? (
+                            <Link
+                              href={`/dashboard/announcements/${row.id}/edit`}
+                              className="md-btn md-btn-tonal md-state"
+                              style={{ height: 32, padding: '0 14px', fontSize: 13 }}
+                            >
+                              تعديل
+                            </Link>
+                          ) : null}
+                          {permissions.delete ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleDelete(row)}
+                              disabled={deletingId === row.id}
+                              className="md-btn md-state disabled:opacity-50"
+                              style={{
+                                height: 32,
+                                padding: '0 14px',
+                                fontSize: 13,
+                                background: 'var(--md-error-container)',
+                                color: 'var(--md-on-error-container)',
+                                borderRadius: 'var(--md-shape-full)',
+                              }}
+                            >
+                              {deletingId === row.id ? '...' : 'حذف'}
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

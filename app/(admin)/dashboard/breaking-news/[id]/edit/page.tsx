@@ -1,10 +1,12 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import BreakingNewsForm from '@/components/admin/BreakingNewsForm';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function EditBreakingNewsPage({ params }: { params: Promise<{ id: string }> }) {
+  const access = await requireAdminPageAccess('breaking_news', 'update');
   const { id } = await params;
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -30,6 +32,10 @@ export default async function EditBreakingNewsPage({ params }: { params: Promise
     notFound();
   }
 
+  if (data.status === 'published' && !access.permissions.breaking_news.publish) {
+    redirect('/dashboard/breaking-news');
+  }
+
   return (
     <>
       <ErrorToastTrigger messages={pageErrors} />
@@ -41,6 +47,7 @@ export default async function EditBreakingNewsPage({ params }: { params: Promise
         <BreakingNewsForm
           id={data.id}
           mode="edit"
+          canPublish={access.permissions.breaking_news.publish}
           initialValues={{
             title: data.title,
             slug: data.slug,

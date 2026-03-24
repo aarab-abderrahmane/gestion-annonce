@@ -1,4 +1,4 @@
-import { cachedJson, json, requireAdminUser } from '@/app/api/_utils'
+import { cachedJson, json, requireAdminPermission } from '@/app/api/_utils'
 import { getSupabaseRouteClient } from '@/app/api/_utils'
 
 type RouteContext = {
@@ -43,7 +43,7 @@ export async function GET(_: Request, context: RouteContext) {
 }
 
 export async function PUT(request: Request, context: RouteContext) {
-  const auth = await requireAdminUser()
+  const auth = await requireAdminPermission('breaking_news', 'update')
   if (auth.response) return auth.response
 
   const { id } = await context.params
@@ -65,7 +65,7 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_: Request, context: RouteContext) {
-  const auth = await requireAdminUser()
+  const auth = await requireAdminPermission('breaking_news', 'delete')
   if (auth.response) return auth.response
 
   const { id } = await context.params

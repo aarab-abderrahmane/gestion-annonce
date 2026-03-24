@@ -1,9 +1,11 @@
 import AnnouncementForm from '@/components/admin/forms/AnnouncementForm';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function CreateAnnouncementPage() {
+  const access = await requireAdminPageAccess('announcements', 'create');
   const supabase = await createClient();
   const [{ data: divisions, error: divisionsError }, { data: groups, error: groupsError }, { data: categories, error: categoriesError }] = await Promise.all([
     supabase.from('divisions').select('id, name, slug').order('name'),
@@ -26,6 +28,7 @@ export default async function CreateAnnouncementPage() {
           divisions={divisions ?? []}
           groups={groups ?? []}
           categories={categories ?? []}
+          canPublish={access.permissions.announcements.publish}
           initialValues={{
             title: '',
             slug: '',

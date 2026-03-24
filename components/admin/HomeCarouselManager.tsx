@@ -9,6 +9,7 @@ import { DEFAULT_HOME_CAROUSEL_SLIDE_INPUTS } from '@/lib/home-carousel';
 import { HOME_CAROUSEL_BUCKET } from '@/lib/storage';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useErrorToast } from '@/components/ui/useErrorToast';
+import type { ResourcePermissionState } from '@/lib/admin-permissions';
 import {
   getFirstZodError,
   homeCarouselSlideSchema,
@@ -108,7 +109,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default function HomeCarouselManager({ initialRows }: { initialRows: Row[] }) {
+export default function HomeCarouselManager({
+  initialRows,
+  permissions,
+}: {
+  initialRows: Row[];
+  permissions: ResourcePermissionState;
+}) {
   const router = useRouter();
   const supabase = createClient();
   const toast = useToast();
@@ -145,6 +152,12 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
     () => rows.filter((row) => row.status === 'published').length,
     [rows]
   );
+  const canCreate = permissions.create;
+  const canUpdate = permissions.update;
+  const canDelete = permissions.delete;
+  const canPublish = permissions.publish;
+  const readOnly = !canCreate && !canUpdate;
+  const formLocked = selectedId ? !canUpdate : !canCreate;
 
   const previewUrl = imagePreviewUrl || values.image_url.trim();
 
@@ -419,14 +432,16 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
               الصفحة الرئيسية تعرض فقط الشرائح المنشورة الموجودة في قاعدة البيانات.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => startCreate()}
-            className="md-btn md-btn-filled md-state"
-          >
-            <Plus size={18} />
-            شريحة جديدة
-          </button>
+          {canCreate ? (
+            <button
+              type="button"
+              onClick={() => startCreate()}
+              className="md-btn md-btn-filled md-state"
+            >
+              <Plus size={18} />
+              شريحة جديدة
+            </button>
+          ) : null}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
@@ -456,7 +471,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                 الشرائح الحالية
               </h3>
               <p className="md-body-small mt-1" style={{ color: 'var(--md-on-surface-variant)' }}>
-                اضغط على أي شريحة لتعديلها أو حذفها.
+            {readOnly ? 'يمكنك استعراض الشرائح الحالية فقط.' : 'اضغط على أي شريحة لتعديلها أو حذفها.'}
               </p>
             </div>
           </div>
@@ -472,15 +487,17 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                   يمكنك إضافة الشرائح الافتراضية إلى قاعدة البيانات أو إنشاء شرائحك الخاصة من النموذج المجاور.
                 </p>
                 <div className="mt-4 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => void handleSeedDefaults()}
-                    disabled={saving}
-                    className="md-btn md-btn-filled md-state disabled:opacity-50"
-                  >
-                    <Plus size={18} />
-                    {saving ? 'جاري الإضافة...' : 'إضافة الشرائح الافتراضية'}
-                  </button>
+                  {canCreate ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleSeedDefaults()}
+                      disabled={saving}
+                      className="md-btn md-btn-filled md-state disabled:opacity-50"
+                    >
+                      <Plus size={18} />
+                      {saving ? 'جاري الإضافة...' : 'إضافة الشرائح الافتراضية'}
+                    </button>
+                  ) : null}
                 </div>
                 <p className="md-body-small mt-3 text-center" style={{ color: 'var(--md-on-surface-variant)' }}>
                   بعد إضافتها ستظهر هنا كشرائح عادية ويمكن حذفها بزر الحذف.
@@ -493,6 +510,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                 const active = row.id === selectedId;
                 const targetLabel = targetOptions.find((option) => option.value === row.target)?.label ?? row.target;
                 const isPublished = row.status === 'published';
+                const canEditRow = canUpdate && (!isPublished || canPublish);
 
                 return (
                   <div
@@ -507,7 +525,8 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                       <button
                         type="button"
                         onClick={() => startEdit(row)}
-                        className="flex min-w-0 flex-1 items-start gap-4 text-right"
+                        disabled={!canEditRow}
+                        className="flex min-w-0 flex-1 items-start gap-4 text-right disabled:cursor-default disabled:opacity-70"
                       >
                         <div
                           className="h-20 w-28 shrink-0 overflow-hidden rounded-[var(--md-shape-l)]"
@@ -555,30 +574,34 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                       </button>
 
                       <div className="flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(row)}
-                          className="md-btn md-btn-tonal md-state"
-                          style={{ height: 36, padding: '0 14px', fontSize: 13 }}
-                        >
-                          تعديل
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDelete(row)}
-                          disabled={deletingId === row.id}
-                          className="md-btn md-state disabled:opacity-50"
-                          style={{
-                            height: 36,
-                            padding: '0 14px',
-                            fontSize: 13,
-                            background: 'var(--md-error-container)',
-                            color: 'var(--md-on-error-container)',
-                            borderRadius: 'var(--md-shape-full)',
-                          }}
-                        >
-                          {deletingId === row.id ? '...' : 'حذف'}
-                        </button>
+                        {canEditRow ? (
+                          <button
+                            type="button"
+                            onClick={() => startEdit(row)}
+                            className="md-btn md-btn-tonal md-state"
+                            style={{ height: 36, padding: '0 14px', fontSize: 13 }}
+                          >
+                            تعديل
+                          </button>
+                        ) : null}
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleDelete(row)}
+                            disabled={deletingId === row.id}
+                            className="md-btn md-state disabled:opacity-50"
+                            style={{
+                              height: 36,
+                              padding: '0 14px',
+                              fontSize: 13,
+                              background: 'var(--md-error-container)',
+                              color: 'var(--md-on-error-container)',
+                              borderRadius: 'var(--md-shape-full)',
+                            }}
+                          >
+                            {deletingId === row.id ? '...' : 'حذف'}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -595,10 +618,14 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                 {selectedId ? 'تعديل الشريحة' : 'إضافة شريحة'}
               </h3>
               <p className="md-body-small mt-1" style={{ color: 'var(--md-on-surface-variant)' }}>
-                يمكنك إدخال رابط صورة خارجي أو رفع صورة مباشرة إلى Supabase.
+                {readOnly
+                  ? 'هذا الحساب يملك صلاحية العرض فقط لهذه الصفحة.'
+                  : !canCreate && !selectedId
+                    ? 'اختر شريحة من القائمة لتعديلها. لا يمكن لهذا الحساب إنشاء شرائح جديدة.'
+                  : 'يمكنك إدخال رابط صورة خارجي أو رفع صورة مباشرة إلى Supabase.'}
               </p>
             </div>
-            {selectedId ? (
+            {selectedId && canCreate ? (
               <button
                 type="button"
                 onClick={() => startCreate()}
@@ -635,6 +662,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                 placeholder="أدخل عنوان الشريحة"
                 className={inputCls}
                 style={inputStyle}
+                disabled={formLocked}
                 onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
                 onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
                 required
@@ -648,6 +676,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                 placeholder="أدخل وصفاً يظهر تحت العنوان"
                 className="w-full min-h-28 md-body-medium px-4 py-3 rounded-[var(--md-shape-s)] border outline-none transition-colors resize-y"
                 style={inputStyle}
+                disabled={formLocked}
                 onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
                 onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
                 required
@@ -661,6 +690,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                 placeholder="https://..."
                 className={inputCls}
                 style={inputStyle}
+                disabled={formLocked}
                 onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
                 onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
               />
@@ -669,7 +699,9 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
             <Field label="رفع صورة جديدة">
               <div className="space-y-3">
                 <label
-                  className="flex cursor-pointer items-center justify-center gap-3 rounded-[var(--md-shape-xl)] border border-dashed px-4 py-5 text-center"
+                  className={`flex items-center justify-center gap-3 rounded-[var(--md-shape-xl)] border border-dashed px-4 py-5 text-center ${
+                    formLocked ? 'cursor-default opacity-70' : 'cursor-pointer'
+                  }`}
                   style={{
                     background: 'var(--md-surface-container-low)',
                     borderColor: 'var(--md-outline-variant)',
@@ -685,10 +717,11 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                     accept="image/*"
                     onChange={handleImageChange}
                     className="hidden"
+                    disabled={formLocked}
                   />
                 </label>
 
-                {imageFile ? (
+                {imageFile && !formLocked ? (
                   <button
                     type="button"
                     onClick={() => setImageFile(null)}
@@ -710,6 +743,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                   placeholder="مثال: استكشف الفعاليات"
                   className={inputCls}
                   style={inputStyle}
+                  disabled={formLocked}
                   onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
                   onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
                   required
@@ -722,6 +756,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                   onChange={(event) => setField('target', event.target.value as HomeCarouselTarget)}
                   className={inputCls}
                   style={inputStyle}
+                  disabled={formLocked}
                   onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
                   onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
                 >
@@ -743,6 +778,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                   onChange={(event) => setField('sort_order', event.target.value)}
                   className={inputCls}
                   style={inputStyle}
+                  disabled={formLocked}
                   onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
                   onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
                   required
@@ -755,11 +791,12 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
                   onChange={(event) => setField('status', event.target.value as ContentStatus)}
                   className={inputCls}
                   style={inputStyle}
+                  disabled={formLocked}
                   onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
                   onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
                 >
                   <option value="draft">مسودة</option>
-                  <option value="published">منشور</option>
+                  {canPublish ? <option value="published">منشور</option> : null}
                 </select>
               </Field>
             </div>
@@ -777,7 +814,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
           <div className="flex flex-wrap gap-3 pt-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || formLocked}
               className="md-btn md-btn-filled md-state disabled:opacity-50"
             >
               {saving ? 'جاري الحفظ...' : selectedId ? 'حفظ التعديلات' : 'إضافة الشريحة'}
@@ -785,6 +822,7 @@ export default function HomeCarouselManager({ initialRows }: { initialRows: Row[
             <button
               type="button"
               onClick={() => startCreate()}
+              disabled={!canCreate}
               className="md-btn md-btn-outlined md-state"
             >
               إعادة تعيين

@@ -2,9 +2,11 @@ import Link from 'next/link';
 import BreakingNewsTable from '@/components/admin/BreakingNewsTable';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { collectErrorMessages } from '@/lib/errors';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function BreakingNewsPage() {
+  const access = await requireAdminPageAccess('breaking_news');
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('breaking_news')
@@ -22,12 +24,14 @@ export default async function BreakingNewsPage() {
           <h2 className="text-2xl font-black text-[#123c3a]">Breaking News</h2>
           <p className="mt-1 text-sm text-[#6d7f82]">Manage all breaking news items from Supabase.</p>
         </div>
-        <Link href="/dashboard/breaking-news/create" className="rounded-2xl bg-[#123c3a] px-4 py-3 text-sm font-semibold text-white">Ajouter</Link>
+        {access.permissions.breaking_news.create ? (
+          <Link href="/dashboard/breaking-news/create" className="rounded-2xl bg-[#123c3a] px-4 py-3 text-sm font-semibold text-white">Ajouter</Link>
+        ) : null}
       </div>
       {rows.length === 0 ? (
         <div className="px-6 py-12 text-sm text-[#6d7f82]">No breaking news found.</div>
       ) : (
-        <BreakingNewsTable rows={rows} />
+        <BreakingNewsTable rows={rows} permissions={access.permissions.breaking_news} />
       )}
     </section>
   );

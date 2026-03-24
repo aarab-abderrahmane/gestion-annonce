@@ -37,6 +37,7 @@ type Props = {
   groups: Group[];
   categories: Category[];
   initialValues: InitialValues;
+  canPublish: boolean;
   id?: string;
 };
 
@@ -132,7 +133,15 @@ function AttachmentPreviewGrid({
   );
 }
 
-export default function AnnouncementForm({ mode, divisions, groups, categories, initialValues, id }: Props) {
+export default function AnnouncementForm({
+  mode,
+  divisions,
+  groups,
+  categories,
+  initialValues,
+  canPublish,
+  id,
+}: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [values, setValues] = useState<InitialValues>(initialValues);
@@ -399,7 +408,7 @@ export default function AnnouncementForm({ mode, divisions, groups, categories, 
           <label htmlFor="status" className="mb-2 block text-sm font-semibold text-[#38515a]">Status</label>
           <select id="status" value={values.status} onChange={(event) => setValues({ ...values, status: event.target.value as InitialValues['status'] })} className="w-full rounded-2xl border border-[#d9cdbb] px-4 py-3">
             <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            {canPublish ? <option value="published">Published</option> : null}
           </select>
         </div>
 

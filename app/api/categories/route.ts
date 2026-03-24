@@ -1,7 +1,7 @@
-import { cachedJson, json, requireAdminUser } from '@/app/api/_utils'
+import { cachedJson, json, requireDashboardUser } from '@/app/api/_utils'
 
 export async function GET() {
-  const auth = await requireAdminUser()
+  const auth = await requireDashboardUser()
   if (auth.response) return auth.response
 
   const [

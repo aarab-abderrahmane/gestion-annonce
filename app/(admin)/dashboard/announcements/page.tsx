@@ -2,6 +2,7 @@ import Link from 'next/link';
 import AnnouncementsTable from '@/components/admin/AnnouncementsTable';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
@@ -29,6 +30,7 @@ function getDivisionName(record?: AnnouncementListRow['divisions']) {
 }
 
 export default async function AnnouncementsAdminPage() {
+  const access = await requireAdminPageAccess('announcements');
   const supabase = await createClient();
 
   const [{ data: announcements, error: announcementsError }, { data: divisions, error: divisionsError }, { data: categories, error: categoriesError }] = await Promise.all([
@@ -93,13 +95,16 @@ export default async function AnnouncementsAdminPage() {
           <h2 className="text-2xl font-black text-[#123c3a]">Announcements</h2>
           <p className="mt-1 text-sm text-[#6d7f82]">Manage announcements, filters, and linked files from Supabase.</p>
         </div>
-        <Link href="/dashboard/announcements/create" className="rounded-2xl bg-[#123c3a] px-4 py-3 text-sm font-semibold text-white">Ajouter</Link>
+        {access.permissions.announcements.create ? (
+          <Link href="/dashboard/announcements/create" className="rounded-2xl bg-[#123c3a] px-4 py-3 text-sm font-semibold text-white">Ajouter</Link>
+        ) : null}
       </div>
       <div className="p-6">
         <AnnouncementsTable
           rows={rows}
           divisions={(divisions ?? []).map((division) => ({ label: division.name, value: division.name }))}
           categories={(categories ?? []).map((category) => ({ label: category.name, value: category.slug }))}
+          permissions={access.permissions.announcements}
         />
       </div>
     </section>

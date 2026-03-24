@@ -1,6 +1,7 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import EventForm from '@/components/admin/forms/EventForm';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
@@ -12,6 +13,7 @@ type EventPerson = {
 };
 
 export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
+  const access = await requireAdminPageAccess('events', 'update');
   const { id } = await params;
   const supabase = await createClient();
 
@@ -55,6 +57,10 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
     notFound();
   }
 
+  if (event.status === 'published' && !access.permissions.events.publish) {
+    redirect('/dashboard/events');
+  }
+
   return (
     <>
       <ErrorToastTrigger messages={pageErrors} />
@@ -67,6 +73,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
           mode="edit"
           id={event.id}
           categories={categories ?? []}
+          canPublish={access.permissions.events.publish}
           initialValues={{
             title: event.title ?? '',
             slug: event.slug ?? '',

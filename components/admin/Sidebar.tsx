@@ -2,24 +2,30 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Megaphone, Settings, X } from 'lucide-react';
+import { BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Settings, Users, X } from 'lucide-react';
+import type { AdminNavIconKey, AdminNavItem } from '@/lib/admin-permissions';
 
-const items = [
-  { href: '/dashboard', label: 'لوحة التحكم', icon: House },
-  { href: '/dashboard/breaking-news', label: 'أخبار عاجلة', icon: BellRing },
-  { href: '/dashboard/home-carousel', label: 'كاروسيل الرئيسية', icon: Images },
-  { href: '/dashboard/announcements', label: 'الإعلانات', icon: Newspaper },
-  { href: '/dashboard/events', label: 'الفعاليات', icon: CalendarDays },
-  { href: '/dashboard/categories', label: 'الأصناف', icon: FolderTree },
-  { href: '/dashboard/structure', label: 'الأقسام والمجموعات', icon: Building2 },
-  { href: '/dashboard/settings', label: 'الإعدادات', icon: Settings },
-];
+const iconMap: Record<AdminNavIconKey, typeof House> = {
+  house: House,
+  bell: BellRing,
+  images: Images,
+  newspaper: Newspaper,
+  calendar: CalendarDays,
+  folder: FolderTree,
+  building: Building2,
+  users: Users,
+  settings: Settings,
+};
 
 export default function Sidebar({
+  items,
+  displayName,
   variant = 'desktop',
   mobileOpen = false,
   onClose,
 }: {
+  items: AdminNavItem[];
+  displayName?: string;
   variant?: 'desktop' | 'mobile';
   mobileOpen?: boolean;
   onClose?: () => void;
@@ -59,7 +65,7 @@ export default function Sidebar({
             className="flex h-10 w-10 items-center justify-center rounded-[var(--md-shape-l)] shrink-0"
             style={{ background: 'var(--md-primary)', color: 'var(--md-on-primary)' }}
           >
-            <Megaphone size={20} />
+            <Users size={20} />
           </div>
           <div className="min-w-0">
             <p
@@ -89,7 +95,8 @@ export default function Sidebar({
             : 'flex-1 px-4 space-y-1'
         }
       >
-        {items.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon }) => {
+          const Icon = iconMap[icon];
           const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
           return (
             <Link
@@ -122,7 +129,7 @@ export default function Sidebar({
         style={{ background: 'var(--md-surface-container)' }}
       >
         <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-          نظام إدارة المحتوى
+          {displayName ? `الحساب: ${displayName}` : 'نظام إدارة المحتوى'}
         </p>
         <p className="md-label-small" style={{ color: 'var(--md-outline)' }}>
           ISTA Ait Melloul © 2026

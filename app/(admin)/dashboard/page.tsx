@@ -1,10 +1,18 @@
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { BellRing, Building2, CalendarDays, Newspaper } from 'lucide-react';
 import DataTable from '@/components/admin/DataTable';
 import StatsCard from '@/components/admin/StatsCard';
+import { requireDashboardAccess } from '@/lib/admin-access';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardPage() {
+  const access = await requireDashboardAccess();
+
+  if (!access.isFullAdmin) {
+    redirect(access.firstAccessiblePath ?? '/dashboard/events');
+  }
+
   const supabase = await createClient();
 
   const [breakingCount, announcementsCount, eventsCount, divisionsCount, announcementsRes, eventsRes] = await Promise.all([

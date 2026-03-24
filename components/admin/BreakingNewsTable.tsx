@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/ToastProvider';
+import type { ResourcePermissionState } from '@/lib/admin-permissions';
 
 const levelLabels: Record<string, string> = {
   dangerous: 'خطير',
@@ -27,7 +28,13 @@ type Row = {
   expires_at: string;
 };
 
-export default function BreakingNewsTable({ rows }: { rows: Row[] }) {
+export default function BreakingNewsTable({
+  rows,
+  permissions,
+}: {
+  rows: Row[];
+  permissions: ResourcePermissionState;
+}) {
   const supabase = createClient();
   const router = useRouter();
   const toast = useToast();
@@ -51,10 +58,11 @@ export default function BreakingNewsTable({ rows }: { rows: Row[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
-              const levelStyle = levelStyles[row.level] ?? { background: 'var(--md-surface-container)', color: 'var(--md-on-surface-variant)' };
-              const isPublished = row.status === 'published';
-              return (
+                {rows.map((row) => {
+                  const levelStyle = levelStyles[row.level] ?? { background: 'var(--md-surface-container)', color: 'var(--md-on-surface-variant)' };
+                  const isPublished = row.status === 'published';
+                  const canEdit = permissions.update && (!isPublished || permissions.publish);
+                  return (
                 <tr
                   key={row.id}
                   style={{ borderTop: '1px solid var(--md-outline-variant)' }}
@@ -89,49 +97,53 @@ export default function BreakingNewsTable({ rows }: { rows: Row[] }) {
                   <td className="md-body-small px-6 py-4" style={{ color: 'var(--md-on-surface-variant)' }}>
                     {new Date(row.expires_at).toLocaleString('ar-MA')}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/dashboard/breaking-news/${row.id}/edit`}
-                        className="md-btn md-btn-tonal md-state"
-                        style={{ height: 32, padding: '0 14px', fontSize: 13 }}
-                      >
-                        تعديل
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!window.confirm('حذف هذا الخبر العاجل؟')) return;
-                          setDeletingId(row.id);
-                          try {
-                            const { error } = await supabase.from('breaking_news').delete().eq('id', row.id);
-                            if (error) {
-                              toast.error(error);
-                              setDeletingId(null);
-                              return;
-                            }
-                            router.refresh();
-                          } catch (error) {
-                            toast.error(error);
-                            setDeletingId(null);
-                          }
-                        }}
-                        disabled={deletingId === row.id}
-                        className="md-btn md-state disabled:opacity-50"
-                        style={{
-                          height: 32,
-                          padding: '0 14px',
-                          fontSize: 13,
-                          background: 'var(--md-error-container)',
-                          color: 'var(--md-on-error-container)',
-                          borderRadius: 'var(--md-shape-full)',
-                        }}
-                      >
-                        {deletingId === row.id ? '...' : 'حذف'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          {canEdit ? (
+                            <Link
+                              href={`/dashboard/breaking-news/${row.id}/edit`}
+                              className="md-btn md-btn-tonal md-state"
+                              style={{ height: 32, padding: '0 14px', fontSize: 13 }}
+                            >
+                              تعديل
+                            </Link>
+                          ) : null}
+                          {permissions.delete ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!window.confirm('حذف هذا الخبر العاجل؟')) return;
+                                setDeletingId(row.id);
+                                try {
+                                  const { error } = await supabase.from('breaking_news').delete().eq('id', row.id);
+                                  if (error) {
+                                    toast.error(error);
+                                    setDeletingId(null);
+                                    return;
+                                  }
+                                  router.refresh();
+                                } catch (error) {
+                                  toast.error(error);
+                                  setDeletingId(null);
+                                }
+                              }}
+                              disabled={deletingId === row.id}
+                              className="md-btn md-state disabled:opacity-50"
+                              style={{
+                                height: 32,
+                                padding: '0 14px',
+                                fontSize: 13,
+                                background: 'var(--md-error-container)',
+                                color: 'var(--md-on-error-container)',
+                                borderRadius: 'var(--md-shape-full)',
+                              }}
+                            >
+                              {deletingId === row.id ? '...' : 'حذف'}
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
               );
             })}
           </tbody>

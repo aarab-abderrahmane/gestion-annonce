@@ -1,9 +1,11 @@
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import HomeCarouselManager, { type HomeCarouselAdminRow } from '@/components/admin/HomeCarouselManager';
+import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function HomeCarouselAdminPage() {
+  const access = await requireAdminPageAccess('home_carousel');
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('home_carousel_slides')
@@ -16,7 +18,10 @@ export default async function HomeCarouselAdminPage() {
   return (
     <>
       <ErrorToastTrigger messages={pageErrors} />
-      <HomeCarouselManager initialRows={(data ?? []) as HomeCarouselAdminRow[]} />
+      <HomeCarouselManager
+        initialRows={(data ?? []) as HomeCarouselAdminRow[]}
+        permissions={access.permissions.home_carousel}
+      />
     </>
   );
 }

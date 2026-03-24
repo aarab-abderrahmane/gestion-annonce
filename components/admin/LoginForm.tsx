@@ -39,8 +39,8 @@ export default function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword(validation.data);
     if (error) { setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.'); setLoading(false); return; }
 
-    const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin');
-    if (adminError || !isAdmin) {
+    const { data: canAccessDashboard, error: accessError } = await supabase.rpc('has_dashboard_access');
+    if (accessError || !canAccessDashboard) {
       await supabase.auth.signOut();
       setError('هذا الحساب لا يملك صلاحية الدخول إلى لوحة الإدارة.');
       setLoading(false);

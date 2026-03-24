@@ -3,35 +3,30 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { LogOut, Menu, X } from 'lucide-react';
-
-const titleMap: Record<string, string> = {
-  '/dashboard': 'لوحة التحكم',
-  '/dashboard/breaking-news': 'أخبار عاجلة',
-  '/dashboard/home-carousel': 'كاروسيل الرئيسية',
-  '/dashboard/announcements': 'الإعلانات',
-  '/dashboard/events': 'الفعاليات',
-  '/dashboard/categories': 'الأصناف',
-  '/dashboard/structure': 'الأقسام والمجموعات',
-  '/dashboard/settings': 'الإعدادات',
-};
+import { ADMIN_ROUTE_TITLES } from '@/lib/admin-permissions';
 
 export default function AdminHeader({
   email,
+  displayName,
+  isFullAdmin,
   onMenuToggle,
   menuOpen = false,
 }: {
   email: string;
+  displayName?: string;
+  isFullAdmin?: boolean;
   onMenuToggle?: () => void;
   menuOpen?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const title =
-    Object.entries(titleMap).find(
+    Object.entries(ADMIN_ROUTE_TITLES).find(
       ([key]) => pathname === key || pathname.startsWith(`${key}/`)
     )?.[1] ?? 'لوحة التحكم';
 
-  const initials = email?.slice(0, 2).toUpperCase() ?? 'A';
+  const chipLabel = displayName?.trim() || email;
+  const initials = chipLabel?.slice(0, 2).toUpperCase() ?? 'A';
 
   return (
     <header
@@ -74,7 +69,8 @@ export default function AdminHeader({
           >
             {initials}
           </span>
-          <span className="max-w-[160px] truncate">{email}</span>
+          <span className="max-w-[140px] truncate">{chipLabel}</span>
+          <span className="text-[11px] opacity-70">{isFullAdmin ? 'إدارة' : 'مفوض'}</span>
         </div>
 
         {/* Logout icon-button */}
