@@ -55,11 +55,22 @@ export default function Header() {
               <Menu size={24} />
             </button>
             <Link href="/" className="md-state flex items-center gap-3 rounded-full px-3 py-1.5">
-              <span className={logoRingClassName}>
-                <span className={logoCoreClassName} style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
-                  <Building2 size={18} />
+              <span
+                  className={ 'site-logo-ring' }
+                >
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ${
+                       'site-logo-ring__inner' 
+                    }`}
+                    style={{ background: 'var(--md-surface-container-low)' }}
+                  >
+                    <img
+                      src="/images/ofppt-logo.jpeg"
+                      alt="ISTA Ait Melloul logo"
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
                 </span>
-              </span>
               <span className="md-title-medium hidden sm:block">ISTA Ait Melloul</span>
             </Link>
           </div>

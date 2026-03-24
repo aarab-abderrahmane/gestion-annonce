@@ -7,9 +7,22 @@ export default function Footer() {
       <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-3 lg:px-10">
         <div>
           <div className="mb-5 flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--md-primary)", color: "var(--md-on-primary)" }}>
-              <Building2 size={20} />
-            </span>
+            <span
+                  className={ 'site-logo-ring' }
+                >
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ${
+                       'site-logo-ring__inner' 
+                    }`}
+                    style={{ background: 'var(--md-surface-container-low)' }}
+                  >
+                    <img
+                      src="/images/ofppt-logo.jpeg"
+                      alt="ISTA Ait Melloul logo"
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                </span>
             <h3 className="md-title-large">ISTA Ait Melloul</h3>
           </div>
           <p className="md-body-medium" style={{ color: "var(--md-on-surface-variant)" }}>
