@@ -20,7 +20,7 @@ const brandFont = '"Plus Jakarta Sans", "Inter", system-ui, sans-serif';
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; type?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ q?: string; type?: string; from?: string; to?: string; sort?: string; expiry?: string }>;
 }): Promise<Metadata> {
   const params = await searchParams;
   const query = (params.q || "").trim();
@@ -41,9 +41,27 @@ const filterOptions = [
   { value: "events", label: "الفعاليات" },
 ] as const;
 
+const sortOptions = [
+  { value: "newest", label: "الأحدث أولاً" },
+  { value: "oldest", label: "الأقدم أولاً" },
+] as const;
+
+const expiryOptions = [
+  { value: "all", label: "الكل" },
+  { value: "active", label: "سارية" },
+  { value: "expired", label: "منتهية" },
+] as const;
+
 function parseDateTimestamp(value?: string | null) {
   if (!value) return null;
   const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+function parseEndDateTimestamp(value?: string | null) {
+  if (!value) return null;
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T23:59:59` : value;
   const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
 }
@@ -58,6 +76,30 @@ function isWithinDateRange(
   if (fromTimestamp !== null && current < fromTimestamp) return false;
   if (toTimestamp !== null && current > toTimestamp) return false;
   return true;
+}
+
+function sortByDate<T>(
+  items: T[],
+  getDate: (item: T) => string | undefined,
+  sortOrder: string,
+) {
+  return [...items].sort((left, right) => {
+    const leftTime = parseDateTimestamp(getDate(left)) ?? 0;
+    const rightTime = parseDateTimestamp(getDate(right)) ?? 0;
+    return sortOrder === "oldest" ? leftTime - rightTime : rightTime - leftTime;
+  });
+}
+
+function matchesExpiryFilter(
+  expiryValue: string | undefined,
+  expiryFilter: string,
+  nowTimestamp: number,
+) {
+  if (expiryFilter === "all") return true;
+  const expiryTimestamp = parseEndDateTimestamp(expiryValue);
+  if (expiryTimestamp === null) return expiryFilter === "active";
+  const isExpired = expiryTimestamp < nowTimestamp;
+  return expiryFilter === "expired" ? isExpired : !isExpired;
 }
 
 function SectionHeader({
@@ -117,6 +159,32 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
+function FilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label
+      className="flex items-center gap-3 rounded-2xl border px-4 py-3"
+      style={{
+        borderColor: "var(--md-outline-variant)",
+        background: "var(--md-surface-container-low)",
+      }}
+    >
+      <span
+        className="shrink-0 text-sm font-semibold"
+        style={{ color: "var(--md-on-surface-variant)" }}
+      >
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
 function ResultCard({
   href,
   badge,
@@ -166,19 +234,30 @@ function ResultCard({
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; type?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ q?: string; type?: string; from?: string; to?: string; sort?: string; expiry?: string }>;
 }) {
   const params = await searchParams;
   const query = (params.q || "").trim();
   const rawType = (params.type || "all").trim();
   const from = (params.from || "").trim();
   const to = (params.to || "").trim();
+  const rawSort = (params.sort || "newest").trim();
+  const rawExpiry = (params.expiry || "all").trim();
   const activeType = filterOptions.some((option) => option.value === rawType)
     ? rawType
     : "all";
+  const activeSort = sortOptions.some((option) => option.value === rawSort)
+    ? rawSort
+    : "newest";
+  const activeExpiry = expiryOptions.some((option) => option.value === rawExpiry)
+    ? rawExpiry
+    : "all";
   const fromTimestamp = parseDateTimestamp(from || null);
   const toTimestamp = parseDateTimestamp(to ? `${to}T23:59:59` : null);
-  const hasActiveSearch = Boolean(query || from || to);
+  const nowTimestamp = Date.now();
+  const hasActiveSearch = Boolean(
+    query || from || to || activeType !== "all" || activeSort !== "newest" || activeExpiry !== "all",
+  );
   const supabase = await createClient();
 
   const [
@@ -238,6 +317,7 @@ export default async function Page({
     ? announcements.filter(
         (item) =>
           (!query || item.title.includes(query) || item.content.includes(query)) &&
+          matchesExpiryFilter(item.expiryDate, activeExpiry, nowTimestamp) &&
           isWithinDateRange(item.publishDate, fromTimestamp, toTimestamp),
       )
     : [];
@@ -245,6 +325,7 @@ export default async function Page({
     ? news.filter(
         (item) =>
           (!query || item.title.includes(query) || item.description.includes(query)) &&
+          matchesExpiryFilter(item.expiryDate, activeExpiry, nowTimestamp) &&
           isWithinDateRange(item.publishDate, fromTimestamp, toTimestamp),
       )
     : [];
@@ -255,6 +336,7 @@ export default async function Page({
             item.title.includes(query) ||
             item.shortDescription.includes(query) ||
             item.location.includes(query)) &&
+          matchesExpiryFilter(item.endsAt || item.endDate, activeExpiry, nowTimestamp) &&
           isWithinDateRange(item.startsAt || item.date, fromTimestamp, toTimestamp),
       )
     : [];
@@ -262,12 +344,22 @@ export default async function Page({
   const totalResults =
     filteredAnnouncements.length + filteredNews.length + filteredEvents.length;
   const visibleAnnouncements =
-    activeType === "all" || activeType === "announcements" ? filteredAnnouncements : [];
-  const visibleNews = activeType === "all" || activeType === "news" ? filteredNews : [];
-  const visibleEvents = activeType === "all" || activeType === "events" ? filteredEvents : [];
+    activeType === "all" || activeType === "announcements"
+      ? sortByDate(filteredAnnouncements, (item) => item.publishDate, activeSort)
+      : [];
+  const visibleNews =
+    activeType === "all" || activeType === "news"
+      ? sortByDate(filteredNews, (item) => item.publishDate, activeSort)
+      : [];
+  const visibleEvents =
+    activeType === "all" || activeType === "events"
+      ? sortByDate(filteredEvents, (item) => item.startsAt || item.date, activeSort)
+      : [];
   const visibleTotal =
     visibleAnnouncements.length + visibleNews.length + visibleEvents.length;
-  const hasCustomFilters = Boolean(query || from || to || activeType !== "all");
+  const hasCustomFilters = Boolean(
+    query || from || to || activeType !== "all" || activeSort !== "newest" || activeExpiry !== "all",
+  );
 
   return (
     <>
@@ -358,83 +450,120 @@ export default async function Page({
                 </button>
               </div>
 
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <label
-                  className="flex items-center gap-3 rounded-2xl border px-4 py-3"
-                  style={{
-                    borderColor: "var(--md-outline-variant)",
-                    background: "var(--md-surface-container-low)",
-                  }}
-                >
-                  <span className="text-sm font-semibold" style={{ color: "var(--md-on-surface-variant)" }}>
-                    من
-                  </span>
-                  <input
-                    type="date"
-                    name="from"
-                    defaultValue={from}
-                    className="min-w-0 flex-1 bg-transparent outline-none"
-                    style={{ color: "var(--md-on-surface)", fontFamily: brandFont }}
-                  />
-                </label>
+              <div
+                className="mt-4 rounded-[24px] border p-4"
+                style={{
+                  borderColor: "var(--md-outline-variant)",
+                  background: "var(--md-surface-container-lowest)",
+                }}
+              >
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--md-on-surface)" }}
+                    >
+                      الفلاتر
+                    </p>
+                    <p
+                      className="mt-1 text-xs"
+                      style={{ color: "var(--md-on-surface-variant)" }}
+                    >
+                      حدّد النوع، الترتيب، الحالة، أو النطاق الزمني.
+                    </p>
+                  </div>
 
-                <label
-                  className="flex items-center gap-3 rounded-2xl border px-4 py-3"
-                  style={{
-                    borderColor: "var(--md-outline-variant)",
-                    background: "var(--md-surface-container-low)",
-                  }}
-                >
-                  <span className="text-sm font-semibold" style={{ color: "var(--md-on-surface-variant)" }}>
-                    إلى
-                  </span>
-                  <input
-                    type="date"
-                    name="to"
-                    defaultValue={to}
-                    className="min-w-0 flex-1 bg-transparent outline-none"
-                    style={{ color: "var(--md-on-surface)", fontFamily: brandFont }}
-                  />
-                </label>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {filterOptions.map((option) => {
-                  const active = activeType === option.value;
-
-                  return (
-                    <button
-                      key={option.value}
-                      type="submit"
-                      name="type"
-                      value={option.value}
+                  {hasCustomFilters ? (
+                    <Link
+                      href="/search"
                       className="rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
                       style={{
-                        background: active
-                          ? "var(--md-primary)"
-                          : "var(--md-surface-container)",
-                        color: active
-                          ? "var(--md-on-primary)"
-                          : "var(--md-on-surface-variant)",
+                        background: "var(--md-surface-container-high)",
+                        color: "var(--md-on-surface)",
                       }}
                     >
-                      {option.label}
-                    </button>
-                  );
-                })}
+                      مسح جميع الفلاتر
+                    </Link>
+                  ) : null}
+                </div>
 
-                {hasCustomFilters ? (
-                  <Link
-                    href="/search"
-                    className="rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
-                    style={{
-                      background: "var(--md-surface-container-high)",
-                      color: "var(--md-on-surface)",
-                    }}
-                  >
-                    مسح جميع الفلاتر
-                  </Link>
-                ) : null}
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <FilterField label="الترتيب">
+                    <select
+                      name="sort"
+                      defaultValue={activeSort}
+                      className="min-w-0 flex-1 bg-transparent outline-none"
+                      style={{ color: "var(--md-on-surface)", fontFamily: brandFont }}
+                    >
+                      {sortOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FilterField>
+
+                  <FilterField label="الحالة">
+                    <select
+                      name="expiry"
+                      defaultValue={activeExpiry}
+                      className="min-w-0 flex-1 bg-transparent outline-none"
+                      style={{ color: "var(--md-on-surface)", fontFamily: brandFont }}
+                    >
+                      {expiryOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FilterField>
+
+                  <FilterField label="من">
+                    <input
+                      type="date"
+                      name="from"
+                      defaultValue={from}
+                      className="min-w-0 flex-1 bg-transparent outline-none"
+                      style={{ color: "var(--md-on-surface)", fontFamily: brandFont }}
+                    />
+                  </FilterField>
+
+                  <FilterField label="إلى">
+                    <input
+                      type="date"
+                      name="to"
+                      defaultValue={to}
+                      className="min-w-0 flex-1 bg-transparent outline-none"
+                      style={{ color: "var(--md-on-surface)", fontFamily: brandFont }}
+                    />
+                  </FilterField>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {filterOptions.map((option) => {
+                    const active = activeType === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="submit"
+                        name="type"
+                        value={option.value}
+                        className="rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
+                        style={{
+                          background: active
+                            ? "var(--md-primary)"
+                            : "var(--md-surface-container)",
+                          color: active
+                            ? "var(--md-on-primary)"
+                            : "var(--md-on-surface-variant)",
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </form>
 
@@ -459,6 +588,12 @@ export default async function Page({
               </span>
               <span className="rounded-full px-3 py-1" style={{ background: "var(--md-surface-container)", color: "var(--md-on-surface-variant)" }}>
                 الفلتر: {filterOptions.find((option) => option.value === activeType)?.label}
+              </span>
+              <span className="rounded-full px-3 py-1" style={{ background: "var(--md-surface-container)", color: "var(--md-on-surface-variant)" }}>
+                الترتيب: {sortOptions.find((option) => option.value === activeSort)?.label}
+              </span>
+              <span className="rounded-full px-3 py-1" style={{ background: "var(--md-surface-container)", color: "var(--md-on-surface-variant)" }}>
+                الحالة: {expiryOptions.find((option) => option.value === activeExpiry)?.label}
               </span>
               {from ? (
                 <span className="rounded-full px-3 py-1" style={{ background: "var(--md-surface-container)", color: "var(--md-on-surface-variant)" }}>
