@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Building2 } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -11,15 +11,17 @@ export default function Footer() {
                   className={ 'site-logo-ring' }
                 >
                   <span
-                    className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ${
+                    className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ${
                        'site-logo-ring__inner' 
                     }`}
-                    style={{ background: 'var(--md-surface-container-low)' }}
+                    style={{ background: "var(--md-surface-container-low)" }}
                   >
-                    <img
+                    <Image
                       src="/images/ofppt-logo.jpeg"
                       alt="ISTA Ait Melloul logo"
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="40px"
+                      className="object-cover"
                     />
                   </span>
                 </span>
@@ -32,9 +34,9 @@ export default function Footer() {
         <div>
           <h3 className="md-title-medium mb-5">روابط سريعة</h3>
           <div className="flex flex-col gap-3">
-            <Link href="/announcements" className="md-body-medium" style={{ color: "var(--md-primary)" }}>قائمة الإعلانات</Link>
-            <Link href="/important-info" className="md-body-medium" style={{ color: "var(--md-primary)" }}>تنبيهات هامة</Link>
-            <Link href="/events" className="md-body-medium" style={{ color: "var(--md-primary)" }}>أرشيف الفعاليات</Link>
+            <Link href="/announcements" className="md-body-medium transition hover:opacity-80" style={{ color: "var(--md-primary)" }}>قائمة الإعلانات</Link>
+            <Link href="/important-info" className="md-body-medium transition hover:opacity-80" style={{ color: "var(--md-primary)" }}>تنبيهات هامة</Link>
+            <Link href="/events" className="md-body-medium transition hover:opacity-80" style={{ color: "var(--md-primary)" }}>أرشيف الفعاليات</Link>
           </div>
         </div>
         <div>
