@@ -24,7 +24,8 @@ export async function generateStaticParams() {
   const { data } = await supabase
     .from('announcements')
     .select('slug')
-    .eq('status', 'published');
+    .eq('status', 'published')
+    .is('deleted_at', null);
 
   return data?.map((item) => ({ slug: item.slug })) ?? [];
 }
@@ -40,6 +41,7 @@ export async function generateMetadata({
     .from('announcements')
     .select('title, slug, description')
     .eq('status', 'published')
+    .is('deleted_at', null)
     .eq('slug', decodeURIComponent(slug))
     .maybeSingle();
 
@@ -72,6 +74,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       announcement_category_links(announcement_categories(name, slug))
     `)
     .eq('status', 'published')
+    .is('deleted_at', null)
     .eq('slug', decodeURIComponent(slug))
     .maybeSingle();
 

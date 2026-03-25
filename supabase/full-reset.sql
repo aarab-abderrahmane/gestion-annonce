@@ -31,7 +31,9 @@ create table if not exists public.breaking_news (
   level text not null check (level in ('dangerous', 'urgent', 'warning')),
   status text not null default 'published' check (status in ('draft', 'published')),
   created_at timestamptz not null default now(),
-  expires_at timestamptz not null
+  expires_at timestamptz not null,
+  deleted_at timestamptz,
+  deleted_by uuid references auth.users(id) on delete set null
 );
 
 create table if not exists public.announcement_categories (
@@ -50,7 +52,9 @@ create table if not exists public.announcements (
   group_id uuid references public.groups(id),
   status text not null default 'draft' check (status in ('draft', 'published')),
   published_at timestamptz not null default now(),
-  expires_at timestamptz
+  expires_at timestamptz,
+  deleted_at timestamptz,
+  deleted_by uuid references auth.users(id) on delete set null
 );
 
 create table if not exists public.announcement_files (
@@ -86,7 +90,9 @@ create table if not exists public.events (
   ends_at timestamptz not null,
   total_attendees integer not null default 0,
   status text not null default 'draft' check (status in ('draft', 'published')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  deleted_by uuid references auth.users(id) on delete set null
 );
 
 create table if not exists public.event_people (
@@ -120,7 +126,9 @@ create table if not exists public.home_carousel_slides (
   sort_order integer not null default 1 check (sort_order >= 1),
   status text not null default 'draft' check (status in ('draft', 'published')),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  deleted_by uuid references auth.users(id) on delete set null
 );
 
 -- ============================================
@@ -128,10 +136,17 @@ create table if not exists public.home_carousel_slides (
 -- ============================================
 
 create index if not exists idx_breaking_news_status on public.breaking_news(status);
+create index if not exists idx_breaking_news_deleted_at on public.breaking_news(deleted_at);
 create index if not exists idx_announcements_status on public.announcements(status);
+create index if not exists idx_announcements_deleted_at on public.announcements(deleted_at);
+create index if not exists idx_announcements_status_deleted_at
+  on public.announcements(status, deleted_at);
 create index if not exists idx_events_status on public.events(status);
+create index if not exists idx_events_deleted_at on public.events(deleted_at);
 create index if not exists idx_home_carousel_slides_status_sort_order
   on public.home_carousel_slides(status, sort_order asc, created_at asc);
+create index if not exists idx_home_carousel_slides_deleted_at
+  on public.home_carousel_slides(deleted_at);
 
 create index if not exists idx_announcement_files_announcement_id
   on public.announcement_files(announcement_id);
@@ -226,7 +241,7 @@ create policy breaking_news_public_select
 on public.breaking_news
 for select
 to anon, authenticated
-using (status = 'published');
+using (status = 'published' and deleted_at is null);
 
 drop policy if exists announcement_categories_public_select on public.announcement_categories;
 create policy announcement_categories_public_select
@@ -240,7 +255,7 @@ create policy announcements_public_select
 on public.announcements
 for select
 to anon, authenticated
-using (status = 'published');
+using (status = 'published' and deleted_at is null);
 
 drop policy if exists announcement_files_public_select on public.announcement_files;
 create policy announcement_files_public_select
@@ -282,7 +297,7 @@ create policy events_public_select
 on public.events
 for select
 to anon, authenticated
-using (status = 'published');
+using (status = 'published' and deleted_at is null);
 
 drop policy if exists event_people_public_select on public.event_people;
 create policy event_people_public_select
@@ -331,7 +346,7 @@ create policy home_carousel_slides_public_select
 on public.home_carousel_slides
 for select
 to anon, authenticated
-using (status = 'published');
+using (status = 'published' and deleted_at is null);
 
 -- ============================================
 -- 7. ADMIN POLICIES

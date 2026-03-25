@@ -35,6 +35,7 @@ export default async function Page() {
       .from('breaking_news')
       .select('id, title, slug, level, status, created_at, expires_at')
       .eq('status', 'published')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false }),
     supabase
       .from('announcements')
@@ -45,6 +46,7 @@ export default async function Page() {
         announcement_category_links(announcement_categories(name, slug))
       `)
       .eq('status', 'published')
+      .is('deleted_at', null)
       .order('published_at', { ascending: false }),
     supabase
       .from('events')
@@ -55,11 +57,13 @@ export default async function Page() {
         event_category_links(event_categories(name, slug))
       `)
       .eq('status', 'published')
+      .is('deleted_at', null)
       .order('starts_at', { ascending: false }),
     supabase
       .from('home_carousel_slides')
       .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at')
       .eq('status', 'published')
+      .is('deleted_at', null)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true }),
   ]);

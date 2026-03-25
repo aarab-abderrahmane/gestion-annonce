@@ -1,3 +1,23 @@
+alter table public.announcements
+add column if not exists deleted_at timestamptz,
+add column if not exists deleted_by uuid references auth.users(id) on delete set null;
+
+create index if not exists idx_announcements_deleted_at
+  on public.announcements(deleted_at);
+
+create index if not exists idx_announcements_status_deleted_at
+  on public.announcements(status, deleted_at);
+
+drop policy if exists announcements_public_select on public.announcements;
+create policy announcements_public_select
+on public.announcements
+for select
+to anon, authenticated
+using (
+  status = 'published'
+  and deleted_at is null
+);
+
 create or replace function public.search_public_content(
   search_query text,
   filter_type text default null,

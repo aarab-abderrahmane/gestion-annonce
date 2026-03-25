@@ -10,11 +10,7 @@ import { HOME_CAROUSEL_BUCKET } from '@/lib/storage';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useErrorToast } from '@/components/ui/useErrorToast';
 import type { ResourcePermissionState } from '@/lib/admin-permissions';
-import {
-  getFirstZodError,
-  homeCarouselSlideSchema,
-  validateUploadFile,
-} from '@/lib/validations';
+import { getFirstZodError, homeCarouselSlideSchema, validateUploadFile } from '@/lib/validations';
 import type { ContentStatus, HomeCarouselTarget } from '@/types';
 
 type Row = {
@@ -28,6 +24,7 @@ type Row = {
   status: ContentStatus;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 };
 
 export type HomeCarouselAdminRow = Row;
@@ -49,8 +46,7 @@ const targetOptions: Array<{ value: HomeCarouselTarget; label: string }> = [
   { value: 'home', label: 'الرئيسية' },
 ];
 
-const inputCls =
-  "w-full md-body-medium px-4 h-12 rounded-[var(--md-shape-s)] border outline-none transition-colors";
+const inputCls = 'w-full h-12 rounded-[var(--md-shape-s)] border px-4 md-body-medium outline-none transition-colors';
 const inputStyle = {
   background: 'var(--md-surface-container-lowest)',
   borderColor: 'var(--md-outline)',
@@ -59,10 +55,7 @@ const inputStyle = {
 
 function sortRows(rows: Row[]) {
   return [...rows].sort((left, right) => {
-    if (left.sort_order !== right.sort_order) {
-      return left.sort_order - right.sort_order;
-    }
-
+    if (left.sort_order !== right.sort_order) return left.sort_order - right.sort_order;
     return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
   });
 }
@@ -87,14 +80,11 @@ function extractStorageTarget(fileUrl: string) {
   const marker = '/storage/v1/object/public/';
   const index = fileUrl.indexOf(marker);
   if (index === -1) return null;
-
   const rest = fileUrl.slice(index + marker.length);
   const parts = rest.split('/');
   const bucket = parts.shift();
   const path = parts.join('/');
-
   if (!bucket || !path) return null;
-
   return { bucket, path };
 }
 
@@ -121,11 +111,13 @@ export default function HomeCarouselManager({
   const toast = useToast();
   const [rows, setRows] = useState<Row[]>(() => sortRows(initialRows));
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [values, setValues] = useState<FormValues>(() => createEmptyValues(getNextSortOrder(sortRows(initialRows))));
+  const [values, setValues] = useState<FormValues>(() => createEmptyValues(getNextSortOrder(sortRows(initialRows).filter((row) => !row.deleted_at))));
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [viewFilter, setViewFilter] = useState<'active' | 'trash' | 'all'>('active');
   const [error, setError] = useState('');
 
   useErrorToast(error);
@@ -142,26 +134,24 @@ export default function HomeCarouselManager({
 
     const objectUrl = URL.createObjectURL(imageFile);
     setImagePreviewUrl(objectUrl);
-
-    return () => {
-      URL.revokeObjectURL(objectUrl);
-    };
+    return () => URL.revokeObjectURL(objectUrl);
   }, [imageFile]);
 
-  const publishedCount = useMemo(
-    () => rows.filter((row) => row.status === 'published').length,
-    [rows]
+  const activeRows = useMemo(() => rows.filter((row) => !row.deleted_at), [rows]);
+  const filteredRows = useMemo(
+    () => rows.filter((row) => (viewFilter === 'all' ? true : viewFilter === 'trash' ? Boolean(row.deleted_at) : !row.deleted_at)),
+    [rows, viewFilter],
   );
+  const publishedCount = useMemo(() => activeRows.filter((row) => row.status === 'published').length, [activeRows]);
   const canCreate = permissions.create;
   const canUpdate = permissions.update;
   const canDelete = permissions.delete;
   const canPublish = permissions.publish;
   const readOnly = !canCreate && !canUpdate;
   const formLocked = selectedId ? !canUpdate : !canCreate;
-
   const previewUrl = imagePreviewUrl || values.image_url.trim();
 
-  function startCreate(nextSortOrder = getNextSortOrder(rows)) {
+  function startCreate(nextSortOrder = getNextSortOrder(activeRows)) {
     setSelectedId(null);
     setValues(createEmptyValues(nextSortOrder));
     setImageFile(null);
@@ -190,20 +180,15 @@ export default function HomeCarouselManager({
   async function uploadImage(file: File) {
     const validation = validateUploadFile(file);
     if (!validation.success) throw new Error(validation.error);
-    if (validation.fileType !== 'image') throw new Error('يُسمح فقط بملفات الصور لهذا الحقل.');
+    if (validation.fileType !== 'image') throw new Error('يسمح فقط بملفات الصور لهذا الحقل.');
 
     const formData = new FormData();
     formData.set('bucket', HOME_CAROUSEL_BUCKET);
     formData.set('folder', 'slides');
     formData.set('file', file);
 
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
-    const result = (await response.json().catch(() => null)) as
-      | { error?: string; url?: string }
-      | null;
+    const response = await fetch('/api/upload', { method: 'POST', body: formData });
+    const result = (await response.json().catch(() => null)) as { error?: string; url?: string } | null;
 
     if (!response.ok || !result?.url) {
       throw new Error(result?.error ?? 'فشل رفع صورة الشريحة.');
@@ -215,18 +200,15 @@ export default function HomeCarouselManager({
   async function removeStoredImage(fileUrl: string) {
     const target = extractStorageTarget(fileUrl);
     if (!target || target.bucket !== HOME_CAROUSEL_BUCKET) return;
-
     await supabase.storage.from(target.bucket).remove([target.path]);
   }
 
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
-
     if (!file) {
       setImageFile(null);
       return;
     }
-
     const validation = validateUploadFile(file);
     if (!validation.success) {
       setError(validation.error);
@@ -234,14 +216,12 @@ export default function HomeCarouselManager({
       setImageFile(null);
       return;
     }
-
     if (validation.fileType !== 'image') {
-      setError('يُسمح فقط بملفات الصور لهذا الحقل.');
+      setError('يسمح فقط بملفات الصور لهذا الحقل.');
       event.target.value = '';
       setImageFile(null);
       return;
     }
-
     setError('');
     setImageFile(file);
   }
@@ -291,25 +271,17 @@ export default function HomeCarouselManager({
       };
 
       if (selectedId) {
-        const { error: updateError } = await supabase
-          .from('home_carousel_slides')
-          .update(payload)
-          .eq('id', selectedId);
-
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
+        const { error: updateError } = await supabase.from('home_carousel_slides').update(payload).eq('id', selectedId);
+        if (updateError) throw new Error(updateError.message);
 
         const updatedRow: Row = {
           ...payload,
           id: selectedId,
           created_at: previousRow?.created_at ?? new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          deleted_at: previousRow?.deleted_at ?? null,
         };
-        const nextRows = sortRows(
-          rows.map((row) => (row.id === selectedId ? updatedRow : row))
-        );
-
+        const nextRows = sortRows(rows.map((row) => (row.id === selectedId ? updatedRow : row)));
         setRows(nextRows);
         startEdit(updatedRow);
 
@@ -321,17 +293,15 @@ export default function HomeCarouselManager({
       } else {
         const { data, error: insertError } = await supabase
           .from('home_carousel_slides')
-          .insert(payload)
-          .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at')
+          .insert({ ...payload, deleted_at: null, deleted_by: null })
+          .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at, deleted_at')
           .single();
 
-        if (insertError || !data) {
-          throw new Error(insertError?.message ?? 'تعذر إنشاء الشريحة.');
-        }
+        if (insertError || !data) throw new Error(insertError?.message ?? 'تعذر إنشاء الشريحة.');
 
         const nextRows = sortRows([...rows, data as Row]);
         setRows(nextRows);
-        startCreate(getNextSortOrder(nextRows));
+        startCreate(getNextSortOrder(nextRows.filter((row) => !row.deleted_at)));
         toast.success('تمت إضافة الشريحة بنجاح.');
       }
 
@@ -343,9 +313,58 @@ export default function HomeCarouselManager({
     }
   }
 
-  async function handleDelete(row: Row) {
-    if (!window.confirm('حذف هذه الشريحة من الكاروسيل؟')) return;
+  async function handleTrash(row: Row) {
+    if (!window.confirm('نقل هذه الشريحة إلى سلة المهملات؟')) return;
+    setDeletingId(row.id);
+    setError('');
 
+    try {
+      const deletedAt = new Date().toISOString();
+      const { data: authData } = await supabase.auth.getUser();
+      const { error: deleteError } = await supabase
+        .from('home_carousel_slides')
+        .update({ deleted_at: deletedAt, deleted_by: authData.user?.id ?? null })
+        .eq('id', row.id)
+        .is('deleted_at', null);
+
+      if (deleteError) throw new Error(deleteError.message);
+
+      const nextRows = sortRows(rows.map((item) => (item.id === row.id ? { ...item, deleted_at: deletedAt } : item)));
+      setRows(nextRows);
+      if (selectedId === row.id) startCreate(getNextSortOrder(nextRows.filter((item) => !item.deleted_at)));
+      toast.success('تم نقل الشريحة إلى سلة المهملات.');
+      router.refresh();
+    } catch (deleteError) {
+      setError(getErrorMessage(deleteError));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function handleRestore(row: Row) {
+    setRestoringId(row.id);
+    setError('');
+
+    try {
+      const { error: restoreError } = await supabase
+        .from('home_carousel_slides')
+        .update({ deleted_at: null, deleted_by: null })
+        .eq('id', row.id);
+
+      if (restoreError) throw new Error(restoreError.message);
+
+      setRows(sortRows(rows.map((item) => (item.id === row.id ? { ...item, deleted_at: null } : item))));
+      toast.success('تم استرجاع الشريحة بنجاح.');
+      router.refresh();
+    } catch (restoreError) {
+      setError(getErrorMessage(restoreError));
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
+  async function handlePermanentDelete(row: Row) {
+    if (!window.confirm('حذف نهائي لهذه الشريحة؟')) return;
     setDeletingId(row.id);
     setError('');
 
@@ -353,22 +372,16 @@ export default function HomeCarouselManager({
       const { error: deleteError } = await supabase
         .from('home_carousel_slides')
         .delete()
-        .eq('id', row.id);
+        .eq('id', row.id)
+        .not('deleted_at', 'is', null);
 
-      if (deleteError) {
-        throw new Error(deleteError.message);
-      }
+      if (deleteError) throw new Error(deleteError.message);
 
       const nextRows = sortRows(rows.filter((item) => item.id !== row.id));
       setRows(nextRows);
-
-      if (selectedId === row.id) {
-        startCreate(getNextSortOrder(nextRows));
-      }
-
+      if (selectedId === row.id) startCreate(getNextSortOrder(nextRows.filter((item) => !item.deleted_at)));
       void removeStoredImage(row.image_url);
-
-      toast.success('تم حذف الشريحة بنجاح.');
+      toast.success('تم حذف الشريحة نهائيا.');
       router.refresh();
     } catch (deleteError) {
       setError(getErrorMessage(deleteError));
@@ -390,26 +403,22 @@ export default function HomeCarouselManager({
         target: slide.target,
         sort_order: slide.sortOrder,
         status: slide.status,
+        deleted_at: null,
+        deleted_by: null,
       }));
 
       const { data, error: insertError } = await supabase
         .from('home_carousel_slides')
         .insert(payload)
-        .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at')
+        .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at, deleted_at')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
+      if (insertError) throw new Error(insertError.message);
 
       const nextRows = sortRows((data ?? []) as Row[]);
       setRows(nextRows);
-
-      if (nextRows[0]) {
-        startEdit(nextRows[0]);
-      }
-
+      if (nextRows[0]) startEdit(nextRows[0]);
       toast.success('تمت إضافة الشرائح الافتراضية.');
       router.refresh();
     } catch (seedError) {
@@ -428,16 +437,11 @@ export default function HomeCarouselManager({
               تخصيص كاروسيل الصفحة الرئيسية
             </h2>
             <p className="md-body-small mt-2 max-w-3xl" style={{ color: 'var(--md-on-surface-variant)' }}>
-              أضف الشرائح، غيّر ترتيبها، حدّد الزر والوجهة، وارفع صوراً مباشرة إلى Supabase Storage.
-              الصفحة الرئيسية تعرض فقط الشرائح المنشورة الموجودة في قاعدة البيانات.
+              أضف الشرائح، غير ترتيبها، وحدد الزر والوجهة، وارفع صورا مباشرة إلى Supabase Storage. الصفحة الرئيسية تعرض فقط الشرائح المنشورة غير المحذوفة.
             </p>
           </div>
           {canCreate ? (
-            <button
-              type="button"
-              onClick={() => startCreate()}
-              className="md-btn md-btn-filled md-state"
-            >
+            <button type="button" onClick={() => startCreate()} className="md-btn md-btn-filled md-state">
               <Plus size={18} />
               شريحة جديدة
             </button>
@@ -445,72 +449,68 @@ export default function HomeCarouselManager({
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
-          <span
-            className="rounded-full px-3 py-1.5 md-label-small"
-            style={{ background: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)' }}
-          >
+          <span className="rounded-full px-3 py-1.5 md-label-small" style={{ background: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)' }}>
             إجمالي الشرائح: {rows.length}
           </span>
-          <span
-            className="rounded-full px-3 py-1.5 md-label-small"
-            style={{
-              background: publishedCount > 0 ? 'var(--md-primary-container)' : 'var(--md-surface-container-highest)',
-              color: publishedCount > 0 ? 'var(--md-on-primary-container)' : 'var(--md-on-surface-variant)',
-            }}
-          >
+          <span className="rounded-full px-3 py-1.5 md-label-small" style={{ background: publishedCount > 0 ? 'var(--md-primary-container)' : 'var(--md-surface-container-highest)', color: publishedCount > 0 ? 'var(--md-on-primary-container)' : 'var(--md-on-surface-variant)' }}>
             الشرائح المنشورة: {publishedCount}
+          </span>
+          <span className="rounded-full px-3 py-1.5 md-label-small" style={{ background: 'var(--md-tertiary-container)', color: 'var(--md-on-tertiary-container)' }}>
+            في المهملات: {rows.filter((row) => row.deleted_at).length}
           </span>
         </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-        <section className="md-card-outlined p-6 space-y-4">
+        <section className="md-card-outlined space-y-4 p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
                 الشرائح الحالية
               </h3>
               <p className="md-body-small mt-1" style={{ color: 'var(--md-on-surface-variant)' }}>
-            {readOnly ? 'يمكنك استعراض الشرائح الحالية فقط.' : 'اضغط على أي شريحة لتعديلها أو حذفها.'}
+                {readOnly ? 'يمكنك استعراض الشرائح الحالية فقط.' : 'اختر شريحة للتعديل، أو انقلها إلى المهملات ثم استرجعها لاحقا.'}
               </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'active', label: 'النشطة' },
+                { key: 'trash', label: 'المهملات' },
+                { key: 'all', label: 'الكل' },
+              ].map((view) => (
+                <button
+                  key={view.key}
+                  type="button"
+                  onClick={() => setViewFilter(view.key as typeof viewFilter)}
+                  className="md-chip"
+                  style={viewFilter === view.key ? { background: 'var(--md-tertiary-container)', borderColor: 'transparent', color: 'var(--md-on-tertiary-container)' } : {}}
+                >
+                  {view.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {rows.length === 0 ? (
-            <div className="space-y-4">
-              <div
-                className="rounded-[var(--md-shape-xl)] border border-dashed px-5 py-8 text-center"
-                style={{ borderColor: 'var(--md-outline-variant)', color: 'var(--md-on-surface-variant)' }}
-              >
-                <p className="md-body-medium">لا توجد شرائح محفوظة بعد.</p>
-                <p className="md-body-small mt-2">
-                  يمكنك إضافة الشرائح الافتراضية إلى قاعدة البيانات أو إنشاء شرائحك الخاصة من النموذج المجاور.
-                </p>
+          {filteredRows.length === 0 ? (
+            <div className="rounded-[var(--md-shape-xl)] border border-dashed px-5 py-8 text-center" style={{ borderColor: 'var(--md-outline-variant)', color: 'var(--md-on-surface-variant)' }}>
+              <p className="md-body-medium">لا توجد شرائح في هذا العرض.</p>
+              {canCreate && rows.length === 0 ? (
                 <div className="mt-4 flex justify-center">
-                  {canCreate ? (
-                    <button
-                      type="button"
-                      onClick={() => void handleSeedDefaults()}
-                      disabled={saving}
-                      className="md-btn md-btn-filled md-state disabled:opacity-50"
-                    >
-                      <Plus size={18} />
-                      {saving ? 'جاري الإضافة...' : 'إضافة الشرائح الافتراضية'}
-                    </button>
-                  ) : null}
+                  <button type="button" onClick={() => void handleSeedDefaults()} disabled={saving} className="md-btn md-btn-filled md-state disabled:opacity-50">
+                    <Plus size={18} />
+                    {saving ? 'جاري الإضافة...' : 'إضافة الشرائح الافتراضية'}
+                  </button>
                 </div>
-                <p className="md-body-small mt-3 text-center" style={{ color: 'var(--md-on-surface-variant)' }}>
-                  بعد إضافتها ستظهر هنا كشرائح عادية ويمكن حذفها بزر الحذف.
-                </p>
-              </div>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-3">
-              {rows.map((row) => {
+              {filteredRows.map((row) => {
                 const active = row.id === selectedId;
                 const targetLabel = targetOptions.find((option) => option.value === row.target)?.label ?? row.target;
                 const isPublished = row.status === 'published';
-                const canEditRow = canUpdate && (!isPublished || canPublish);
+                const isTrashed = Boolean(row.deleted_at);
+                const canEditRow = canUpdate && (!isPublished || canPublish) && !isTrashed;
 
                 return (
                   <div
@@ -522,51 +522,33 @@ export default function HomeCarouselManager({
                     }}
                   >
                     <div className="flex flex-col gap-4 md:flex-row md:items-start">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(row)}
-                        disabled={!canEditRow}
-                        className="flex min-w-0 flex-1 items-start gap-4 text-right disabled:cursor-default disabled:opacity-70"
-                      >
-                        <div
-                          className="h-20 w-28 shrink-0 overflow-hidden rounded-[var(--md-shape-l)]"
-                          style={{ background: 'var(--md-surface-container)' }}
-                        >
+                      <button type="button" onClick={() => startEdit(row)} disabled={!canEditRow} className="flex min-w-0 flex-1 items-start gap-4 text-right disabled:cursor-default disabled:opacity-70">
+                        <div className="h-20 w-28 shrink-0 overflow-hidden rounded-[var(--md-shape-l)]" style={{ background: 'var(--md-surface-container)' }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={row.image_url} alt={row.title} className="h-full w-full object-cover" />
                         </div>
                         <div className="min-w-0 space-y-2">
                           <div className="flex flex-wrap gap-2">
-                            <span
-                              className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                              style={{
-                                background: isPublished ? 'var(--md-primary-container)' : 'var(--md-surface-container-highest)',
-                                color: isPublished ? 'var(--md-on-primary-container)' : 'var(--md-on-surface-variant)',
-                              }}
-                            >
+                            <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: isPublished ? 'var(--md-primary-container)' : 'var(--md-surface-container-highest)', color: isPublished ? 'var(--md-on-primary-container)' : 'var(--md-on-surface-variant)' }}>
                               {isPublished ? 'منشور' : 'مسودة'}
                             </span>
-                            <span
-                              className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                              style={{ background: 'var(--md-tertiary-container)', color: 'var(--md-on-tertiary-container)' }}
-                            >
+                            <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: 'var(--md-tertiary-container)', color: 'var(--md-on-tertiary-container)' }}>
                               {targetLabel}
                             </span>
-                            <span
-                              className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                              style={{ background: 'var(--md-surface-container-highest)', color: 'var(--md-on-surface-variant)' }}
-                            >
+                            <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: 'var(--md-surface-container-highest)', color: 'var(--md-on-surface-variant)' }}>
                               ترتيب {row.sort_order}
                             </span>
+                            {isTrashed ? (
+                              <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: 'var(--md-error-container)', color: 'var(--md-on-error-container)' }}>
+                                في المهملات
+                              </span>
+                            ) : null}
                           </div>
                           <div className="min-w-0">
                             <p className="md-title-small truncate" style={{ color: 'var(--md-on-surface)' }}>
                               {row.title}
                             </p>
-                            <p
-                              className="md-body-small mt-1 line-clamp-2"
-                              style={{ color: active ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)' }}
-                            >
+                            <p className="md-body-small mt-1 line-clamp-2" style={{ color: active ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)' }}>
                               {row.subtitle}
                             </p>
                           </div>
@@ -575,32 +557,24 @@ export default function HomeCarouselManager({
 
                       <div className="flex shrink-0 gap-2">
                         {canEditRow ? (
-                          <button
-                            type="button"
-                            onClick={() => startEdit(row)}
-                            className="md-btn md-btn-tonal md-state"
-                            style={{ height: 36, padding: '0 14px', fontSize: 13 }}
-                          >
+                          <button type="button" onClick={() => startEdit(row)} className="md-btn md-btn-tonal md-state" style={{ height: 36, padding: '0 14px', fontSize: 13 }}>
                             تعديل
                           </button>
                         ) : null}
-                        {canDelete ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleDelete(row)}
-                            disabled={deletingId === row.id}
-                            className="md-btn md-state disabled:opacity-50"
-                            style={{
-                              height: 36,
-                              padding: '0 14px',
-                              fontSize: 13,
-                              background: 'var(--md-error-container)',
-                              color: 'var(--md-on-error-container)',
-                              borderRadius: 'var(--md-shape-full)',
-                            }}
-                          >
-                            {deletingId === row.id ? '...' : 'حذف'}
+                        {canDelete && !isTrashed ? (
+                          <button type="button" onClick={() => void handleTrash(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13, background: 'var(--md-warning-container)', color: 'var(--md-on-warning-container)', borderRadius: 'var(--md-shape-full)' }}>
+                            {deletingId === row.id ? '...' : 'إلى المهملات'}
                           </button>
+                        ) : null}
+                        {canDelete && isTrashed ? (
+                          <>
+                            <button type="button" onClick={() => void handleRestore(row)} disabled={restoringId === row.id} className="md-btn md-btn-tonal md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13 }}>
+                              {restoringId === row.id ? '...' : 'استرجاع'}
+                            </button>
+                            <button type="button" onClick={() => void handlePermanentDelete(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13, background: 'var(--md-error-container)', color: 'var(--md-on-error-container)', borderRadius: 'var(--md-shape-full)' }}>
+                              {deletingId === row.id ? '...' : 'حذف نهائي'}
+                            </button>
+                          </>
                         ) : null}
                       </div>
                     </div>
@@ -611,38 +585,24 @@ export default function HomeCarouselManager({
           )}
         </section>
 
-        <form onSubmit={handleSubmit} className="md-card-outlined p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="md-card-outlined space-y-5 p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
                 {selectedId ? 'تعديل الشريحة' : 'إضافة شريحة'}
               </h3>
               <p className="md-body-small mt-1" style={{ color: 'var(--md-on-surface-variant)' }}>
-                {readOnly
-                  ? 'هذا الحساب يملك صلاحية العرض فقط لهذه الصفحة.'
-                  : !canCreate && !selectedId
-                    ? 'اختر شريحة من القائمة لتعديلها. لا يمكن لهذا الحساب إنشاء شرائح جديدة.'
-                  : 'يمكنك إدخال رابط صورة خارجي أو رفع صورة مباشرة إلى Supabase.'}
+                {readOnly ? 'هذا الحساب يملك صلاحية العرض فقط لهذه الصفحة.' : 'يمكنك إدخال رابط صورة خارجي أو رفع صورة مباشرة إلى Supabase.'}
               </p>
             </div>
             {selectedId && canCreate ? (
-              <button
-                type="button"
-                onClick={() => startCreate()}
-                className="md-btn md-btn-outlined md-state"
-              >
+              <button type="button" onClick={() => startCreate()} className="md-btn md-btn-outlined md-state">
                 شريحة جديدة
               </button>
             ) : null}
           </div>
 
-          <div
-            className="overflow-hidden rounded-[var(--md-shape-xl)] border"
-            style={{
-              background: 'var(--md-surface-container-low)',
-              borderColor: 'var(--md-outline-variant)',
-            }}
-          >
+          <div className="overflow-hidden rounded-[var(--md-shape-xl)] border" style={{ background: 'var(--md-surface-container-low)', borderColor: 'var(--md-outline-variant)' }}>
             {previewUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img src={previewUrl} alt={values.title || 'Preview'} className="h-56 w-full object-cover" />
@@ -656,145 +616,45 @@ export default function HomeCarouselManager({
 
           <div className="grid gap-5">
             <Field label="العنوان">
-              <input
-                value={values.title}
-                onChange={(event) => setField('title', event.target.value)}
-                placeholder="أدخل عنوان الشريحة"
-                className={inputCls}
-                style={inputStyle}
-                disabled={formLocked}
-                onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-                onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-                required
-              />
+              <input value={values.title} onChange={(event) => setField('title', event.target.value)} className={inputCls} style={inputStyle} disabled={formLocked} required />
             </Field>
-
             <Field label="الوصف المختصر">
-              <textarea
-                value={values.subtitle}
-                onChange={(event) => setField('subtitle', event.target.value)}
-                placeholder="أدخل وصفاً يظهر تحت العنوان"
-                className="w-full min-h-28 md-body-medium px-4 py-3 rounded-[var(--md-shape-s)] border outline-none transition-colors resize-y"
-                style={inputStyle}
-                disabled={formLocked}
-                onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-                onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-                required
-              />
+              <textarea value={values.subtitle} onChange={(event) => setField('subtitle', event.target.value)} className="w-full min-h-28 rounded-[var(--md-shape-s)] border px-4 py-3 md-body-medium outline-none resize-y" style={inputStyle} disabled={formLocked} required />
             </Field>
-
             <Field label="رابط الصورة">
-              <input
-                value={values.image_url}
-                onChange={(event) => setField('image_url', event.target.value)}
-                placeholder="https://..."
-                className={inputCls}
-                style={inputStyle}
-                disabled={formLocked}
-                onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-                onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-              />
+              <input value={values.image_url} onChange={(event) => setField('image_url', event.target.value)} className={inputCls} style={inputStyle} disabled={formLocked} />
             </Field>
-
             <Field label="رفع صورة جديدة">
               <div className="space-y-3">
-                <label
-                  className={`flex items-center justify-center gap-3 rounded-[var(--md-shape-xl)] border border-dashed px-4 py-5 text-center ${
-                    formLocked ? 'cursor-default opacity-70' : 'cursor-pointer'
-                  }`}
-                  style={{
-                    background: 'var(--md-surface-container-low)',
-                    borderColor: 'var(--md-outline-variant)',
-                    color: 'var(--md-on-surface-variant)',
-                  }}
-                >
+                <label className={`flex items-center justify-center gap-3 rounded-[var(--md-shape-xl)] border border-dashed px-4 py-5 text-center ${formLocked ? 'cursor-default opacity-70' : 'cursor-pointer'}`} style={{ background: 'var(--md-surface-container-low)', borderColor: 'var(--md-outline-variant)', color: 'var(--md-on-surface-variant)' }}>
                   <Upload size={18} />
-                  <span className="md-body-medium">
-                    {imageFile ? imageFile.name : 'اختر صورة من جهازك'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                    disabled={formLocked}
-                  />
+                  <span className="md-body-medium">{imageFile ? imageFile.name : 'اختر صورة من جهازك'}</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" disabled={formLocked} />
                 </label>
-
                 {imageFile && !formLocked ? (
-                  <button
-                    type="button"
-                    onClick={() => setImageFile(null)}
-                    className="md-btn md-btn-text md-state"
-                    style={{ color: 'var(--md-error)' }}
-                  >
+                  <button type="button" onClick={() => setImageFile(null)} className="md-btn md-btn-text md-state" style={{ color: 'var(--md-error)' }}>
                     <X size={16} />
                     إزالة الصورة الجديدة
                   </button>
                 ) : null}
               </div>
             </Field>
-
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="نص الزر">
-                <input
-                  value={values.cta_label}
-                  onChange={(event) => setField('cta_label', event.target.value)}
-                  placeholder="مثال: استكشف الفعاليات"
-                  className={inputCls}
-                  style={inputStyle}
-                  disabled={formLocked}
-                  onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-                  onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-                  required
-                />
+                <input value={values.cta_label} onChange={(event) => setField('cta_label', event.target.value)} className={inputCls} style={inputStyle} disabled={formLocked} required />
               </Field>
-
               <Field label="الوجهة">
-                <select
-                  value={values.target}
-                  onChange={(event) => setField('target', event.target.value as HomeCarouselTarget)}
-                  className={inputCls}
-                  style={inputStyle}
-                  disabled={formLocked}
-                  onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-                  onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-                >
-                  {targetOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                <select value={values.target} onChange={(event) => setField('target', event.target.value as HomeCarouselTarget)} className={inputCls} style={inputStyle} disabled={formLocked}>
+                  {targetOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </Field>
             </div>
-
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="الترتيب">
-                <input
-                  type="number"
-                  min={1}
-                  value={values.sort_order}
-                  onChange={(event) => setField('sort_order', event.target.value)}
-                  className={inputCls}
-                  style={inputStyle}
-                  disabled={formLocked}
-                  onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-                  onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-                  required
-                />
+                <input type="number" min={1} value={values.sort_order} onChange={(event) => setField('sort_order', event.target.value)} className={inputCls} style={inputStyle} disabled={formLocked} required />
               </Field>
-
               <Field label="الحالة">
-                <select
-                  value={values.status}
-                  onChange={(event) => setField('status', event.target.value as ContentStatus)}
-                  className={inputCls}
-                  style={inputStyle}
-                  disabled={formLocked}
-                  onFocus={(event) => (event.target.style.borderColor = 'var(--md-primary)')}
-                  onBlur={(event) => (event.target.style.borderColor = 'var(--md-outline)')}
-                >
+                <select value={values.status} onChange={(event) => setField('status', event.target.value as ContentStatus)} className={inputCls} style={inputStyle} disabled={formLocked}>
                   <option value="draft">مسودة</option>
                   {canPublish ? <option value="published">منشور</option> : null}
                 </select>
@@ -803,28 +663,16 @@ export default function HomeCarouselManager({
           </div>
 
           {error ? (
-            <p
-              className="md-body-small rounded-[var(--md-shape-m)] px-4 py-3"
-              style={{ background: 'var(--md-error-container)', color: 'var(--md-on-error-container)' }}
-            >
+            <p className="rounded-[var(--md-shape-m)] px-4 py-3 md-body-small" style={{ background: 'var(--md-error-container)', color: 'var(--md-on-error-container)' }}>
               {error}
             </p>
           ) : null}
 
           <div className="flex flex-wrap gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={saving || formLocked}
-              className="md-btn md-btn-filled md-state disabled:opacity-50"
-            >
+            <button type="submit" disabled={saving || formLocked} className="md-btn md-btn-filled md-state disabled:opacity-50">
               {saving ? 'جاري الحفظ...' : selectedId ? 'حفظ التعديلات' : 'إضافة الشريحة'}
             </button>
-            <button
-              type="button"
-              onClick={() => startCreate()}
-              disabled={!canCreate}
-              className="md-btn md-btn-outlined md-state"
-            >
+            <button type="button" onClick={() => startCreate()} disabled={!canCreate} className="md-btn md-btn-outlined md-state">
               إعادة تعيين
             </button>
           </div>

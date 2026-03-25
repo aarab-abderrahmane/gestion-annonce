@@ -20,6 +20,7 @@ export default async function Page() {
     .from('breaking_news')
     .select('id, title, slug, level, status, created_at, expires_at')
     .eq('status', 'published')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   const pageErrors = collectErrorMessages([error]);

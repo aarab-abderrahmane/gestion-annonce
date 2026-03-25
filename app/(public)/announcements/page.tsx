@@ -26,6 +26,7 @@ export default async function Page() {
       announcement_category_links(announcement_categories(name, slug))
     `)
     .eq('status', 'published')
+    .is('deleted_at', null)
     .order('published_at', { ascending: false });
 
   const announcementFileErrors: string[] = [];

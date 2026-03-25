@@ -1,3 +1,45 @@
+alter table public.breaking_news
+add column if not exists deleted_at timestamptz,
+add column if not exists deleted_by uuid references auth.users(id) on delete set null;
+
+alter table public.events
+add column if not exists deleted_at timestamptz,
+add column if not exists deleted_by uuid references auth.users(id) on delete set null;
+
+alter table public.home_carousel_slides
+add column if not exists deleted_at timestamptz,
+add column if not exists deleted_by uuid references auth.users(id) on delete set null;
+
+create index if not exists idx_breaking_news_deleted_at
+  on public.breaking_news(deleted_at);
+
+create index if not exists idx_events_deleted_at
+  on public.events(deleted_at);
+
+create index if not exists idx_home_carousel_slides_deleted_at
+  on public.home_carousel_slides(deleted_at);
+
+drop policy if exists breaking_news_public_select on public.breaking_news;
+create policy breaking_news_public_select
+on public.breaking_news
+for select
+to anon, authenticated
+using (status = 'published' and deleted_at is null);
+
+drop policy if exists events_public_select on public.events;
+create policy events_public_select
+on public.events
+for select
+to anon, authenticated
+using (status = 'published' and deleted_at is null);
+
+drop policy if exists home_carousel_slides_public_select on public.home_carousel_slides;
+create policy home_carousel_slides_public_select
+on public.home_carousel_slides
+for select
+to anon, authenticated
+using (status = 'published' and deleted_at is null);
+
 create or replace function public.search_public_content(
   search_query text,
   filter_type text default null,
@@ -48,6 +90,7 @@ as $$
     left join public.event_category_links ecl on ecl.event_id = e.id
     left join public.event_categories ec on ec.id = ecl.category_id
     where e.status = 'published'
+      and e.deleted_at is null
       and to_tsvector('simple', coalesce(e.title, '') || ' ' || coalesce(e.description, '') || ' ' || coalesce(e.location, '')) @@ plainto_tsquery('simple', search_query)
       and (filter_type is null or filter_type = 'event')
       and (date_from is null or e.starts_at::date >= date_from)
@@ -68,6 +111,7 @@ as $$
       end as badge
     from public.breaking_news bn
     where bn.status = 'published'
+      and bn.deleted_at is null
       and bn.expires_at > now()
       and to_tsvector('simple', coalesce(bn.title, '')) @@ plainto_tsquery('simple', search_query)
       and (filter_type is null or filter_type = 'breaking-news')

@@ -21,6 +21,7 @@ type EventListRow = {
   location: string | null;
   starts_at: string;
   status: string;
+  deleted_at: string | null;
   cover_image: string | null;
   event_photos?: Array<{ photo_url: string | null }> | null;
   event_category_links?: EventCategoryLink[] | null;
@@ -44,6 +45,7 @@ export default async function EventsAdminPage() {
         location,
         starts_at,
         status,
+        deleted_at,
         cover_image,
         event_photos(photo_url),
         event_category_links(
@@ -61,6 +63,7 @@ export default async function EventsAdminPage() {
     location: item.location,
     startsAt: item.starts_at,
     status: item.status,
+    deletedAt: item.deleted_at,
     coverImage: item.cover_image,
     photos: item.event_photos ?? [],
     categories: (item.event_category_links ?? [])

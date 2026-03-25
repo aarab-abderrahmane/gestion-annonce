@@ -72,6 +72,7 @@ async function fallbackSearch(supabase: SupabaseClient, filters: Required<Search
       .from('breaking_news')
       .select('id, slug, title, level, created_at, expires_at, status')
       .eq('status', 'published')
+      .is('deleted_at', null)
       .gt('expires_at', nowIso)
       .order('created_at', { ascending: false }),
     supabase
@@ -83,6 +84,7 @@ async function fallbackSearch(supabase: SupabaseClient, filters: Required<Search
         announcement_category_links(announcement_categories(name, slug))
       `)
       .eq('status', 'published')
+      .is('deleted_at', null)
       .order('published_at', { ascending: false }),
     supabase
       .from('events')
@@ -93,6 +95,7 @@ async function fallbackSearch(supabase: SupabaseClient, filters: Required<Search
         event_category_links(event_categories(name, slug))
       `)
       .eq('status', 'published')
+      .is('deleted_at', null)
       .order('starts_at', { ascending: false }),
   ]);
 

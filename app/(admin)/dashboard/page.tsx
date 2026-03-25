@@ -16,12 +16,12 @@ export default async function DashboardPage() {
   const supabase = await createClient();
 
   const [breakingCount, announcementsCount, eventsCount, divisionsCount, announcementsRes, eventsRes] = await Promise.all([
-    supabase.from('breaking_news').select('*', { count: 'exact', head: true }),
-    supabase.from('announcements').select('*', { count: 'exact', head: true }),
-    supabase.from('events').select('*', { count: 'exact', head: true }),
+    supabase.from('breaking_news').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+    supabase.from('announcements').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+    supabase.from('events').select('*', { count: 'exact', head: true }).is('deleted_at', null),
     supabase.from('divisions').select('*', { count: 'exact', head: true }),
-    supabase.from('announcements').select('id, title, slug, published_at, status').order('published_at', { ascending: false }).limit(5),
-    supabase.from('events').select('id, title, slug, starts_at, status, location').order('starts_at', { ascending: false }).limit(5),
+    supabase.from('announcements').select('id, title, slug, published_at, status').is('deleted_at', null).order('published_at', { ascending: false }).limit(5),
+    supabase.from('events').select('id, title, slug, starts_at, status, location').is('deleted_at', null).order('starts_at', { ascending: false }).limit(5),
   ]);
 
   return (
