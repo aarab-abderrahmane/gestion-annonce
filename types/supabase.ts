@@ -155,6 +155,8 @@ export type Database = {
       breaking_news: {
         Row: {
           created_at: string;
+          deleted_at: string | null;
+          deleted_by: string | null;
           expires_at: string | null;
           id: string;
           level: string;
@@ -164,6 +166,8 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           expires_at?: string | null;
           id?: string;
           level: string;
@@ -173,12 +177,95 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           expires_at?: string | null;
           id?: string;
           level?: string;
           slug?: string;
           status?: string;
           title?: string;
+        };
+        Relationships: [];
+      };
+      danger_news: {
+        Row: {
+          created_at: string;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          expires_at: string;
+          id: string;
+          status: string;
+          title: string;
+        };
+        Insert: {
+          created_at?: string;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          expires_at: string;
+          id?: string;
+          status?: string;
+          title: string;
+        };
+        Update: {
+          created_at?: string;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          expires_at?: string;
+          id?: string;
+          status?: string;
+          title?: string;
+        };
+        Relationships: [];
+      };
+      danger_news_settings: {
+        Row: {
+          accent_color: string;
+          badge_label: string;
+          created_at: string;
+          gradient_from_color: string;
+          gradient_to_color: string;
+          id: string;
+          icon_name: string;
+          is_enabled: boolean;
+          max_items: number;
+          separator: string;
+          speed_seconds: number;
+          text_color: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          accent_color?: string;
+          badge_label?: string;
+          created_at?: string;
+          gradient_from_color?: string;
+          gradient_to_color?: string;
+          id?: string;
+          icon_name?: string;
+          is_enabled?: boolean;
+          max_items?: number;
+          separator?: string;
+          speed_seconds?: number;
+          text_color?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Update: {
+          accent_color?: string;
+          badge_label?: string;
+          created_at?: string;
+          gradient_from_color?: string;
+          gradient_to_color?: string;
+          id?: string;
+          icon_name?: string;
+          is_enabled?: boolean;
+          max_items?: number;
+          separator?: string;
+          speed_seconds?: number;
+          text_color?: string;
+          title?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

@@ -15,6 +15,7 @@ type AnnouncementListRow = {
   title: string;
   status: string;
   published_at: string;
+  deleted_at: string | null;
   divisions?: { name?: string | null } | Array<{ name?: string | null }> | null;
   announcement_category_links?: AnnouncementCategoryLink[] | null;
 };
@@ -41,6 +42,7 @@ export default async function AnnouncementsAdminPage() {
         title,
         status,
         published_at,
+        deleted_at,
         divisions(name),
         announcement_category_links(
           announcement_categories(id, name, slug)
@@ -73,6 +75,7 @@ export default async function AnnouncementsAdminPage() {
     divisionName: getDivisionName(item.divisions),
     status: item.status,
     publishedAt: item.published_at,
+    deletedAt: item.deleted_at,
     files: item.announcement_files ?? [],
     categories: (item.announcement_category_links ?? [])
       .map((link) => {

@@ -11,11 +11,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from('announcements')
         .select('slug, published_at')
         .eq('status', 'published')
+        .is('deleted_at', null)
         .order('published_at', { ascending: false }),
       supabase
         .from('events')
         .select('slug, starts_at')
         .eq('status', 'published')
+        .is('deleted_at', null)
         .order('starts_at', { ascending: false }),
     ]);
 

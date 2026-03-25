@@ -23,6 +23,7 @@ export async function GET() {
     .from('breaking_news')
     .select('id, title, slug, level, status, created_at, expires_at')
     .eq('status', 'published')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await auth.supabase
     .from('breaking_news')
-    .insert(payload)
+    .insert({ ...payload, deleted_at: null, deleted_by: null })
     .select()
     .single()
 

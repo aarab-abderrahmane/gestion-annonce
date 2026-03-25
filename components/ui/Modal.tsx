@@ -51,13 +51,13 @@ export default function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[var(--md-shape-xl)]"
+        className="relative z-10 w-full max-w-lg overflow-hidden rounded-[var(--md-shape-xl)]"
         style={{
           background: "var(--md-surface-container-high)",
           boxShadow: "0px 8px 12px 6px rgba(0,0,0,0.15), 0px 4px 4px rgba(0,0,0,0.3)",
         }}
       >
-        <div className="flex items-start justify-between gap-4 border-b px-6 py-5" style={{ borderColor: "var(--md-outline-variant)" }}>
+        <div className={`flex items-start justify-between gap-4 ${children? "border-b" : ""} px-6 py-5`} style={{ borderColor: "var(--md-outline-variant)" }}>
           <div className="space-y-1">
             {title ? (
               <h2 className="md-headline-small" style={{ color: "var(--md-on-surface)" }}>

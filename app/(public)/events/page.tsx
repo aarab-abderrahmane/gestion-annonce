@@ -25,6 +25,7 @@ export default async function Page() {
       event_category_links(event_categories(name, slug))
     `)
     .eq('status', 'published')
+    .is('deleted_at', null)
     .order('starts_at', { ascending: false });
 
   const pageErrors = collectErrorMessages([error]);

@@ -1,8 +1,14 @@
 import BreakingNewsForm from '@/components/admin/BreakingNewsForm';
 import { requireAdminPageAccess } from '@/lib/admin-access';
 
-export default async function CreateBreakingNewsPage() {
+export default async function CreateBreakingNewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ level?: string }>;
+}) {
   const access = await requireAdminPageAccess('breaking_news', 'create');
+  const params = await searchParams;
+  const level = params.level === 'dangerous' || params.level === 'warning' ? params.level : 'urgent';
 
   return (
     <div className="space-y-6">
@@ -16,7 +22,7 @@ export default async function CreateBreakingNewsPage() {
         initialValues={{
           title: '',
           slug: '',
-          level: 'urgent',
+          level,
           status: 'draft',
           expires_at: '',
         }}

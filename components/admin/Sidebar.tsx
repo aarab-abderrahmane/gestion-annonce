@@ -1,13 +1,15 @@
 "use client";
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Settings, Users, X } from 'lucide-react';
+import { AlertTriangle, BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Settings, Users, X } from 'lucide-react';
 import type { AdminNavIconKey, AdminNavItem } from '@/lib/admin-permissions';
 
 const iconMap: Record<AdminNavIconKey, typeof House> = {
   house: House,
   bell: BellRing,
+  alert: AlertTriangle,
   images: Images,
   newspaper: Newspaper,
   calendar: CalendarDays,
@@ -62,12 +64,24 @@ export default function Sidebar({
           className="flex items-center gap-3 px-4 py-4 rounded-[var(--md-shape-xl)]"
           style={{ background: 'var(--md-secondary-container)' }}
         >
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-[var(--md-shape-l)] shrink-0"
-            style={{ background: 'var(--md-primary)', color: 'var(--md-on-primary)' }}
-          >
-            <Users size={20} />
-          </div>
+           <span
+                  className={'site-logo-ring'}
+                >
+                  <span
+                  className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full 
+                      relative site-logo-ring__inner
+                    `}
+                    style={{ background: 'var(--md-secondary-container)' }}
+                  >
+                    <Image
+                      src="/images/ofppt-logo.jpeg"
+                      alt="ISTA Ait Melloul logo"
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  </span>
+                </span>
           <div className="min-w-0">
             <p
               className="md-label-small uppercase tracking-widest"

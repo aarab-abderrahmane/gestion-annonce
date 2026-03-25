@@ -41,6 +41,7 @@ export async function GET() {
       )
     `)
     .eq('status', 'published')
+    .is('deleted_at', null)
     .order('starts_at', { ascending: false })
 
   if (error) {
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
 
   const { data, error } = await auth.supabase
     .from('events')
-    .insert(payload)
+    .insert({ ...payload, deleted_at: null, deleted_by: null })
     .select()
     .single()
 

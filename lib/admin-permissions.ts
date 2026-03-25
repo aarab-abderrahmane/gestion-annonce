@@ -5,6 +5,7 @@ export type DashboardAccountStatus = (typeof ADMIN_ACCOUNT_STATUS_VALUES)[number
 
 export const ADMIN_RESOURCE_VALUES = [
   'breaking_news',
+  'danger_news',
   'home_carousel',
   'announcements',
   'events',
@@ -45,6 +46,7 @@ export type DashboardPermissionRow = {
 export type AdminNavIconKey =
   | 'house'
   | 'bell'
+  | 'alert'
   | 'images'
   | 'newspaper'
   | 'calendar'
@@ -72,6 +74,7 @@ const EMPTY_RESOURCE_PERMISSION: ResourcePermissionState = {
 
 export const ADMIN_RESOURCE_LABELS: Record<AdminResource, string> = {
   breaking_news: 'الأخبار العاجلة',
+  danger_news: 'الشريط الخطير',
   home_carousel: 'كاروسيل الرئيسية',
   announcements: 'الإعلانات',
   events: 'الفعاليات',
@@ -82,6 +85,7 @@ export const ADMIN_RESOURCE_LABELS: Record<AdminResource, string> = {
 
 export const ADMIN_RESOURCE_DESCRIPTIONS: Record<AdminResource, string> = {
   breaking_news: 'إنشاء الأخبار العاجلة وتحديثها ونشرها.',
+  danger_news: 'إدارة محتوى الشريط الخطير وتخصيصه في الصفحة الرئيسية.',
   home_carousel: 'إدارة شرائح الصفحة الرئيسية وصورها.',
   announcements: 'إضافة الإعلانات والملفات والأصناف المرتبطة بها.',
   events: 'إضافة الفعاليات والصور والمشاركين والأصناف.',
@@ -93,6 +97,7 @@ export const ADMIN_RESOURCE_DESCRIPTIONS: Record<AdminResource, string> = {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: 'house', fullAdminOnly: true },
   { href: '/dashboard/breaking-news', label: 'أخبار عاجلة', icon: 'bell', resource: 'breaking_news' },
+  { href: '/dashboard/danger-news', label: 'الشريط الخطير', icon: 'alert', resource: 'danger_news' },
   { href: '/dashboard/home-carousel', label: 'كاروسيل الرئيسية', icon: 'images', resource: 'home_carousel' },
   { href: '/dashboard/announcements', label: 'الإعلانات', icon: 'newspaper', resource: 'announcements' },
   { href: '/dashboard/events', label: 'الفعاليات', icon: 'calendar', resource: 'events' },

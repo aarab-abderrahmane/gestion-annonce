@@ -43,6 +43,7 @@ export async function GET(_: Request, context: RouteContext) {
     `)
     .eq('id', id)
     .eq('status', 'published')
+    .is('deleted_at', null)
     .maybeSingle()
 
   if (error) {
@@ -78,12 +79,61 @@ export async function PUT(request: Request, context: RouteContext) {
   return json(data)
 }
 
-export async function DELETE(_: Request, context: RouteContext) {
+export async function PATCH(request: Request, context: RouteContext) {
   const auth = await requireAdminPermission('announcements', 'delete')
   if (auth.response) return auth.response
 
   const { id } = await context.params
-  const { error } = await auth.supabase.from('announcements').delete().eq('id', id)
+  const body = (await request.json().catch(() => null)) as { action?: string } | null
+
+  if (body?.action !== 'restore') {
+    return json({ error: 'Invalid action' }, { status: 400 })
+  }
+
+  const { error } = await auth.supabase
+    .from('announcements')
+    .update({
+      deleted_at: null,
+      deleted_by: null,
+    })
+    .eq('id', id)
+
+  if (error) {
+    return json({ error: error.message }, { status: 500 })
+  }
+
+  return json({ success: true })
+}
+
+export async function DELETE(request: Request, context: RouteContext) {
+  const auth = await requireAdminPermission('announcements', 'delete')
+  if (auth.response) return auth.response
+
+  const { id } = await context.params
+  const purge = new URL(request.url).searchParams.get('purge') === 'true'
+
+  if (purge) {
+    const { error } = await auth.supabase
+      .from('announcements')
+      .delete()
+      .eq('id', id)
+      .not('deleted_at', 'is', null)
+
+    if (error) {
+      return json({ error: error.message }, { status: 500 })
+    }
+
+    return json({ success: true })
+  }
+
+  const { error } = await auth.supabase
+    .from('announcements')
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: auth.user.id,
+    })
+    .eq('id', id)
+    .is('deleted_at', null)
 
   if (error) {
     return json({ error: error.message }, { status: 500 })

@@ -29,6 +29,7 @@ as $$
     left join public.announcement_category_links acl on acl.announcement_id = a.id
     left join public.announcement_categories ac on ac.id = acl.category_id
     where a.status = 'published'
+      and a.deleted_at is null
       and to_tsvector('simple', coalesce(a.title, '') || ' ' || coalesce(a.description, '')) @@ plainto_tsquery('simple', search_query)
       and (filter_type is null or filter_type = 'announcement')
       and (date_from is null or coalesce(a.published_at, now())::date >= date_from)

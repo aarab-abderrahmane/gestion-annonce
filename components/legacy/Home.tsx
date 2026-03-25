@@ -2,24 +2,39 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Announcement, Event, HomeCarouselSlide, NewsAlert } from '@/types';
+import DangerNewsIcon from '@/components/shared/DangerNewsIcon';
+import { DEFAULT_DANGER_NEWS_TICKER_SETTINGS } from '@/lib/danger-news';
+import { Announcement, DangerNewsItem, DangerNewsTickerSettings, Event, HomeCarouselSlide, NewsAlert } from '@/types';
 import { Bell, Info, Calendar, ArrowLeft, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
 interface HomeProps {
   announcements: Announcement[];
   newsItems: NewsAlert[];
+  dangerNewsItems: DangerNewsItem[];
   events: Event[];
   slides?: HomeCarouselSlide[];
+  dangerTickerSettings?: DangerNewsTickerSettings;
   onNavigate: (page: string) => void;
 }
 
-const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, slides = [], onNavigate }) => {
+const Home: React.FC<HomeProps> = ({
+  announcements,
+  newsItems,
+  dangerNewsItems,
+  events,
+  slides = [],
+  dangerTickerSettings,
+  onNavigate,
+}) => {
   const heroSlides = slides;
   const hasHeroSlides = heroSlides.length > 0;
   const hasCarouselControls = heroSlides.length > 1;
   const [activeSlide, setActiveSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [dangerousTickerRepeatCount, setDangerousTickerRepeatCount] = useState(2);
   const currentSlideIndex = hasHeroSlides ? activeSlide % heroSlides.length : 0;
+  const dangerousTickerShellRef = useRef<HTMLDivElement>(null);
+  const dangerousTickerSegmentRef = useRef<HTMLDivElement>(null);
 
   const nextSlide = useCallback(() => {
     if (!hasCarouselControls || isTransitioning) return;
@@ -43,7 +58,18 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, slides = 
 
   const latestAnnouncements = announcements.slice(0, 3);
   const breakingNews = newsItems.filter(n => new Date(n.expiryDate) > new Date()).slice(0, 3);
+  const resolvedDangerTickerSettings = dangerTickerSettings ?? DEFAULT_DANGER_NEWS_TICKER_SETTINGS;
+  const dangerousNews = dangerNewsItems
+    .filter(item => new Date(item.expiryDate) > new Date())
+    .slice(0, resolvedDangerTickerSettings.maxItems);
   const upcomingEvents = events.filter(e => e.isUpcoming).slice(0, 3);
+  const dangerousNewsSignature = dangerousNews.map(item => `${item.id}:${item.title}`).join('|');
+  const showDangerousNewsBanner = resolvedDangerTickerSettings.isEnabled && dangerousNews.length > 0;
+  const dangerousTickerSeparator = resolvedDangerTickerSettings.separator.trim() || DEFAULT_DANGER_NEWS_TICKER_SETTINGS.separator;
+  const dangerousTickerItemStyle = {
+    color: resolvedDangerTickerSettings.textColor,
+    fontFamily: 'var(--md-font-brand)',
+  };
 
   // ── Quick Search ────────────────────────────────────────────────
   const [query, setQuery] = useState('');
@@ -85,6 +111,34 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, slides = 
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, []);
+
+  useEffect(() => {
+    if (dangerousNews.length === 0) return;
+
+    const measureTicker = () => {
+      const shellWidth = dangerousTickerShellRef.current?.offsetWidth ?? 0;
+      const segmentWidth = dangerousTickerSegmentRef.current?.scrollWidth ?? 0;
+
+      if (!shellWidth || !segmentWidth) return;
+
+      const nextRepeatCount = Math.max(2, Math.ceil(shellWidth / segmentWidth) + 1);
+      setDangerousTickerRepeatCount(current => current === nextRepeatCount ? current : nextRepeatCount);
+    };
+
+    measureTicker();
+
+    const resizeObserver = new ResizeObserver(measureTicker);
+
+    if (dangerousTickerShellRef.current) {
+      resizeObserver.observe(dangerousTickerShellRef.current);
+    }
+
+    if (dangerousTickerSegmentRef.current) {
+      resizeObserver.observe(dangerousTickerSegmentRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [dangerousNews.length, dangerousNewsSignature]);
 
   const handleResultClick = (page: string) => {
     onNavigate(page);
@@ -409,6 +463,90 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, slides = 
       </div>
 
       {/* ── Main Grid ─────────────────────────────────────────────── */}
+      {showDangerousNewsBanner && (
+        <section
+          className="overflow-hidden rounded-[24px] border"
+          style={{
+            borderColor: resolvedDangerTickerSettings.accentColor,
+            background: `linear-gradient(90deg, ${resolvedDangerTickerSettings.gradientFromColor} 0%, ${resolvedDangerTickerSettings.gradientToColor} 100%)`,
+            boxShadow: '0px 6px 16px rgba(0,0,0,0.12)',
+          }}
+        >
+          <div className="flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:gap-5 md:px-6">
+            <div className="flex items-center gap-3 shrink-0">
+              <span
+                className="flex h-11 w-11 items-center justify-center rounded-full"
+                style={{ background: resolvedDangerTickerSettings.accentColor, color: '#FFFFFF' }}
+              >
+                <DangerNewsIcon name={resolvedDangerTickerSettings.iconName} size={20} />
+              </span>
+              <div>
+                <p className="md-label-small uppercase tracking-widest" style={{ color: resolvedDangerTickerSettings.textColor, opacity: 0.78 }}>
+                  {resolvedDangerTickerSettings.badgeLabel}
+                </p>
+                <h2 className="md-title-medium" style={{ color: resolvedDangerTickerSettings.textColor }}>
+                  {resolvedDangerTickerSettings.title}
+                </h2>
+              </div>
+            </div>
+
+            <div
+              ref={dangerousTickerShellRef}
+              dir="ltr"
+              className="dangerous-news-ticker-shell min-w-0 flex-1 overflow-hidden rounded-[var(--md-shape-full)] border px-4 py-3"
+              style={{
+                borderColor: `${resolvedDangerTickerSettings.accentColor}33`,
+                background: `color-mix(in srgb, white 78%, ${resolvedDangerTickerSettings.gradientToColor} 22%)`,
+              }}
+            >
+              <div
+                dir="ltr"
+                className="dangerous-news-ticker-track flex items-center"
+                style={{
+                  ['--dangerous-news-repeat-count' as string]: dangerousTickerRepeatCount,
+                  ['--dangerous-news-ticker-duration' as string]: `${resolvedDangerTickerSettings.speedSeconds}s`,
+                }}
+              >
+                {Array.from({ length: dangerousTickerRepeatCount }, (_, segmentIndex) => {
+                  const isPrimarySegment = segmentIndex === 0;
+
+                  return (
+                    <div
+                      key={`dangerous-segment-${segmentIndex}`}
+                      ref={isPrimarySegment ? dangerousTickerSegmentRef : undefined}
+                      aria-hidden={isPrimarySegment ? undefined : true}
+                      className={`dangerous-news-ticker-segment inline-flex shrink-0 items-center whitespace-nowrap ${isPrimarySegment ? '' : 'dangerous-news-ticker-segment--duplicate pointer-events-none'}`}
+                    >
+                      {dangerousNews.map((item) => (
+                        <div
+                          key={`dangerous-segment-${segmentIndex}-${item.id}`}
+                          className="flex shrink-0 items-center gap-4 pe-6"
+                        >
+                          <span
+                            className="min-w-0 whitespace-nowrap text-right md-title-small"
+                            dir="rtl"
+                            style={dangerousTickerItemStyle}
+                          >
+                            <span className="md-title-small">{item.title}</span>
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className="shrink-0 text-sm"
+                            style={{ color: resolvedDangerTickerSettings.textColor, opacity: 0.45 }}
+                          >
+                            {dangerousTickerSeparator}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         {/* Left / Main column */}
