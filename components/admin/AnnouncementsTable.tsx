@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/ToastProvider';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { Filter } from 'lucide-react';
 import type { ResourcePermissionState } from '@/lib/admin-permissions';
 
@@ -20,6 +21,13 @@ type Row = {
   files: Array<{ file_url: string | null }>;
 };
 type FilterOption = { label: string; value: string };
+type DialogState =
+  | { open: false }
+  | {
+      open: true;
+      mode: 'trash' | 'purge';
+      row: Row;
+    };
 
 function extractStorageTarget(fileUrl: string) {
   const marker = '/storage/v1/object/public/';
@@ -53,6 +61,7 @@ export default function AnnouncementsTable({
   const [viewFilter, setViewFilter] = useState<'active' | 'trash' | 'all'>('active');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [dialogState, setDialogState] = useState<DialogState>({ open: false });
 
   const filteredRows = useMemo(
     () =>
@@ -71,8 +80,11 @@ export default function AnnouncementsTable({
     [rows, divisionFilter, categoryFilter, statusFilter, viewFilter],
   );
 
+  function requestTrash(row: Row) {
+    setDialogState({ open: true, mode: 'trash', row });
+  }
+
   async function handleTrash(row: Row) {
-    if (!window.confirm('نقل هذا الإعلان إلى سلة المهملات؟')) return;
     setDeletingId(row.id);
 
     try {
@@ -118,8 +130,11 @@ export default function AnnouncementsTable({
     }
   }
 
+  function requestPermanentDelete(row: Row) {
+    setDialogState({ open: true, mode: 'purge', row });
+  }
+
   async function handlePermanentDelete(row: Row) {
-    if (!window.confirm('حذف نهائي لهذا الإعلان وملفاته المرتبطة؟ لا يمكن التراجع بعد ذلك.')) return;
     setDeletingId(row.id);
 
     try {
@@ -148,8 +163,36 @@ export default function AnnouncementsTable({
     }
   }
 
+  async function handleDialogConfirm() {
+    if (!dialogState.open) return;
+    const { row, mode } = dialogState;
+    setDialogState({ open: false });
+    if (mode === 'trash') {
+      await handleTrash(row);
+      return;
+    }
+    await handlePermanentDelete(row);
+  }
+
   return (
     <div className="space-y-5">
+      <ConfirmDialog
+        key={dialogState.open ? `${dialogState.mode}:${dialogState.row.id}` : 'announcement-dialog-closed'}
+        open={dialogState.open}
+        onClose={() => setDialogState({ open: false })}
+        onConfirm={() => void handleDialogConfirm()}
+        title={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائي للإعلان' : 'نقل الإعلان إلى المهملات'}
+        description={
+          dialogState.open && dialogState.mode === 'purge'
+            ? 'سيتم حذف الإعلان وملفاته المرتبطة نهائيًا، ولا يمكن التراجع بعد ذلك.'
+            : 'سيتم إخفاء الإعلان من القوائم العامة ويمكن استعادته لاحقًا من المهملات.'
+        }
+        confirmLabel={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائيًا' : 'نقل إلى المهملات'}
+        confirmVariant={dialogState.open && dialogState.mode === 'purge' ? 'destructive' : 'filled'}
+        loading={Boolean(dialogState.open && deletingId === dialogState.row.id)}
+        verificationText={dialogState.open && dialogState.mode === 'purge' ? dialogState.row.title : null}
+        verificationLabel="أعد كتابة عنوان الإعلان للتأكيد"
+      />
       <div
         className="flex flex-wrap items-center gap-3 rounded-[var(--md-shape-xl)] p-4"
         style={{ background: 'var(--md-surface-container-low)', border: '1px solid var(--md-outline-variant)' }}
@@ -313,7 +356,7 @@ export default function AnnouncementsTable({
                           {permissions.delete && !isTrashed ? (
                             <button
                               type="button"
-                              onClick={() => void handleTrash(row)}
+                              onClick={() => requestTrash(row)}
                               disabled={deletingId === row.id}
                               className="md-btn md-state disabled:opacity-50"
                               style={{
@@ -325,7 +368,7 @@ export default function AnnouncementsTable({
                                 borderRadius: 'var(--md-shape-full)',
                               }}
                             >
-                              {deletingId === row.id ? '...' : 'إلى المهملات'}
+                              {deletingId === row.id ? '...' : 'نقل إلى المهملات'}
                             </button>
                           ) : null}
 
@@ -338,11 +381,11 @@ export default function AnnouncementsTable({
                                 className="md-btn md-btn-tonal md-state disabled:opacity-50"
                                 style={{ height: 32, padding: '0 14px', fontSize: 13 }}
                               >
-                                {restoringId === row.id ? '...' : 'استرجاع'}
+                                {restoringId === row.id ? '...' : 'استعادة'}
                               </button>
                               <button
                                 type="button"
-                                onClick={() => void handlePermanentDelete(row)}
+                              onClick={() => requestPermanentDelete(row)}
                                 disabled={deletingId === row.id}
                                 className="md-btn md-state disabled:opacity-50"
                                 style={{
@@ -354,7 +397,7 @@ export default function AnnouncementsTable({
                                   borderRadius: 'var(--md-shape-full)',
                                 }}
                               >
-                                {deletingId === row.id ? '...' : 'حذف نهائي'}
+                                {deletingId === row.id ? '...' : 'حذف نهائيًا'}
                               </button>
                             </>
                           ) : null}

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/ToastProvider';
 import type { ResourcePermissionState } from '@/lib/admin-permissions';
 
@@ -27,6 +28,13 @@ type Row = {
   expires_at: string;
   deleted_at?: string | null;
 };
+type DialogState =
+  | { open: false }
+  | {
+      open: true;
+      mode: 'trash' | 'purge';
+      row: Row;
+    };
 
 export default function BreakingNewsTable({
   rows,
@@ -40,6 +48,7 @@ export default function BreakingNewsTable({
   const [viewFilter, setViewFilter] = useState<'active' | 'trash' | 'all'>('active');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [dialogState, setDialogState] = useState<DialogState>({ open: false });
 
   const filteredRows = useMemo(
     () =>
@@ -49,8 +58,11 @@ export default function BreakingNewsTable({
     [rows, viewFilter],
   );
 
+  function requestTrash(row: Row) {
+    setDialogState({ open: true, mode: 'trash', row });
+  }
+
   async function handleTrash(row: Row) {
-    if (!window.confirm('نقل هذا الخبر العاجل إلى سلة المهملات؟')) return;
     setDeletingId(row.id);
     try {
       const response = await fetch(`/api/breaking-news/${row.id}`, { method: 'DELETE' });
@@ -88,8 +100,11 @@ export default function BreakingNewsTable({
     }
   }
 
+  function requestPermanentDelete(row: Row) {
+    setDialogState({ open: true, mode: 'purge', row });
+  }
+
   async function handlePermanentDelete(row: Row) {
-    if (!window.confirm('حذف نهائي لهذا الخبر العاجل؟')) return;
     setDeletingId(row.id);
     try {
       const response = await fetch(`/api/breaking-news/${row.id}?purge=true`, { method: 'DELETE' });
@@ -106,8 +121,36 @@ export default function BreakingNewsTable({
     }
   }
 
+  async function handleDialogConfirm() {
+    if (!dialogState.open) return;
+    const { row, mode } = dialogState;
+    setDialogState({ open: false });
+    if (mode === 'trash') {
+      await handleTrash(row);
+      return;
+    }
+    await handlePermanentDelete(row);
+  }
+
   return (
     <div className="space-y-4">
+      <ConfirmDialog
+        key={dialogState.open ? `${dialogState.mode}:${dialogState.row.id}` : 'breaking-news-dialog-closed'}
+        open={dialogState.open}
+        onClose={() => setDialogState({ open: false })}
+        onConfirm={() => void handleDialogConfirm()}
+        title={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائي للخبر العاجل' : 'نقل الخبر العاجل إلى المهملات'}
+        description={
+          dialogState.open && dialogState.mode === 'purge'
+            ? 'سيتم حذف الخبر العاجل نهائيًا، ولن تتمكن من استعادته بعد ذلك.'
+            : 'سيتم إخفاء الخبر العاجل من الواجهة العامة ويمكن استعادته لاحقًا من المهملات.'
+        }
+        confirmLabel={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائيًا' : 'نقل إلى المهملات'}
+        confirmVariant={dialogState.open && dialogState.mode === 'purge' ? 'destructive' : 'filled'}
+        loading={Boolean(dialogState.open && deletingId === dialogState.row.id)}
+        verificationText={dialogState.open && dialogState.mode === 'purge' ? dialogState.row.title : null}
+        verificationLabel="أعد كتابة عنوان الخبر للتأكيد"
+      />
       <div className="flex flex-wrap gap-2 px-6 pt-4">
         {[
           { key: 'active', label: 'النشطة' },
@@ -194,12 +237,12 @@ export default function BreakingNewsTable({
                         {permissions.delete && !isTrashed ? (
                           <button
                             type="button"
-                            onClick={() => void handleTrash(row)}
+                            onClick={() => requestTrash(row)}
                             disabled={deletingId === row.id}
                             className="md-btn md-state disabled:opacity-50"
                             style={{ height: 32, padding: '0 14px', fontSize: 13, background: 'var(--md-warning-container)', color: 'var(--md-on-warning-container)', borderRadius: 'var(--md-shape-full)' }}
                           >
-                            {deletingId === row.id ? '...' : 'إلى المهملات'}
+                            {deletingId === row.id ? '...' : 'نقل إلى المهملات'}
                           </button>
                         ) : null}
                         {permissions.delete && isTrashed ? (
@@ -211,16 +254,16 @@ export default function BreakingNewsTable({
                               className="md-btn md-btn-tonal md-state disabled:opacity-50"
                               style={{ height: 32, padding: '0 14px', fontSize: 13 }}
                             >
-                              {restoringId === row.id ? '...' : 'استرجاع'}
+                              {restoringId === row.id ? '...' : 'استعادة'}
                             </button>
                             <button
                               type="button"
-                              onClick={() => void handlePermanentDelete(row)}
+                              onClick={() => requestPermanentDelete(row)}
                               disabled={deletingId === row.id}
                               className="md-btn md-state disabled:opacity-50"
                               style={{ height: 32, padding: '0 14px', fontSize: 13, background: 'var(--md-error-container)', color: 'var(--md-on-error-container)', borderRadius: 'var(--md-shape-full)' }}
                             >
-                              {deletingId === row.id ? '...' : 'حذف نهائي'}
+                              {deletingId === row.id ? '...' : 'حذف نهائيًا'}
                             </button>
                           </>
                         ) : null}

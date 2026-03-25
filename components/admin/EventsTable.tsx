@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/ToastProvider';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { Filter } from 'lucide-react';
 import type { ResourcePermissionState } from '@/lib/admin-permissions';
 
@@ -21,6 +22,13 @@ type Row = {
   photos: Array<{ photo_url: string | null }>;
 };
 type FilterOption = { label: string; value: string };
+type DialogState =
+  | { open: false }
+  | {
+      open: true;
+      mode: 'trash' | 'purge';
+      row: Row;
+    };
 
 function extractStorageTarget(fileUrl: string) {
   const marker = '/storage/v1/object/public/';
@@ -51,6 +59,7 @@ export default function EventsTable({
   const [viewFilter, setViewFilter] = useState<'active' | 'trash' | 'all'>('active');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [dialogState, setDialogState] = useState<DialogState>({ open: false });
 
   const filteredRows = useMemo(
     () =>
@@ -64,8 +73,11 @@ export default function EventsTable({
     [rows, categoryFilter, statusFilter, viewFilter],
   );
 
+  function requestTrash(row: Row) {
+    setDialogState({ open: true, mode: 'trash', row });
+  }
+
   async function handleTrash(row: Row) {
-    if (!window.confirm('نقل هذه الفعالية إلى سلة المهملات؟')) return;
     setDeletingId(row.id);
     try {
       const response = await fetch(`/api/events/${row.id}`, { method: 'DELETE' });
@@ -103,8 +115,11 @@ export default function EventsTable({
     }
   }
 
+  function requestPermanentDelete(row: Row) {
+    setDialogState({ open: true, mode: 'purge', row });
+  }
+
   async function handlePermanentDelete(row: Row) {
-    if (!window.confirm('حذف نهائي لهذه الفعالية وملفاتها؟')) return;
     setDeletingId(row.id);
     try {
       const urls = [row.coverImage, ...row.photos.map((p) => p.photo_url)].filter(Boolean) as string[];
@@ -127,8 +142,36 @@ export default function EventsTable({
     }
   }
 
+  async function handleDialogConfirm() {
+    if (!dialogState.open) return;
+    const { row, mode } = dialogState;
+    setDialogState({ open: false });
+    if (mode === 'trash') {
+      await handleTrash(row);
+      return;
+    }
+    await handlePermanentDelete(row);
+  }
+
   return (
     <div className="space-y-5">
+      <ConfirmDialog
+        key={dialogState.open ? `${dialogState.mode}:${dialogState.row.id}` : 'events-dialog-closed'}
+        open={dialogState.open}
+        onClose={() => setDialogState({ open: false })}
+        onConfirm={() => void handleDialogConfirm()}
+        title={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائي للفعالية' : 'نقل الفعالية إلى المهملات'}
+        description={
+          dialogState.open && dialogState.mode === 'purge'
+            ? 'سيتم حذف الفعالية وملفاتها نهائيًا، ولا يمكن استعادتها بعد ذلك.'
+            : 'سيتم إخفاء الفعالية من القوائم العامة ويمكن استعادتها لاحقًا من المهملات.'
+        }
+        confirmLabel={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائيًا' : 'نقل إلى المهملات'}
+        confirmVariant={dialogState.open && dialogState.mode === 'purge' ? 'destructive' : 'filled'}
+        loading={Boolean(dialogState.open && deletingId === dialogState.row.id)}
+        verificationText={dialogState.open && dialogState.mode === 'purge' ? dialogState.row.title : null}
+        verificationLabel="أعد كتابة عنوان الفعالية للتأكيد"
+      />
       <div
         className="flex flex-wrap items-center gap-3 rounded-[var(--md-shape-xl)] p-4"
         style={{ background: 'var(--md-surface-container-low)', border: '1px solid var(--md-outline-variant)' }}
@@ -244,17 +287,17 @@ export default function EventsTable({
                             </Link>
                           ) : null}
                           {permissions.delete && !isTrashed ? (
-                            <button type="button" onClick={() => void handleTrash(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 32, padding: '0 14px', fontSize: 13, background: 'var(--md-warning-container)', color: 'var(--md-on-warning-container)', borderRadius: 'var(--md-shape-full)' }}>
-                              {deletingId === row.id ? '...' : 'إلى المهملات'}
+                            <button type="button" onClick={() => requestTrash(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 32, padding: '0 14px', fontSize: 13, background: 'var(--md-warning-container)', color: 'var(--md-on-warning-container)', borderRadius: 'var(--md-shape-full)' }}>
+                              {deletingId === row.id ? '...' : 'نقل إلى المهملات'}
                             </button>
                           ) : null}
                           {permissions.delete && isTrashed ? (
                             <>
                               <button type="button" onClick={() => void handleRestore(row)} disabled={restoringId === row.id} className="md-btn md-btn-tonal md-state disabled:opacity-50" style={{ height: 32, padding: '0 14px', fontSize: 13 }}>
-                                {restoringId === row.id ? '...' : 'استرجاع'}
+                                {restoringId === row.id ? '...' : 'استعادة'}
                               </button>
-                              <button type="button" onClick={() => void handlePermanentDelete(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 32, padding: '0 14px', fontSize: 13, background: 'var(--md-error-container)', color: 'var(--md-on-error-container)', borderRadius: 'var(--md-shape-full)' }}>
-                                {deletingId === row.id ? '...' : 'حذف نهائي'}
+                              <button type="button" onClick={() => requestPermanentDelete(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 32, padding: '0 14px', fontSize: 13, background: 'var(--md-error-container)', color: 'var(--md-on-error-container)', borderRadius: 'var(--md-shape-full)' }}>
+                                {deletingId === row.id ? '...' : 'حذف نهائيًا'}
                               </button>
                             </>
                           ) : null}

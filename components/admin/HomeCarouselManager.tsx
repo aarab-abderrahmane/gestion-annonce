@@ -9,6 +9,7 @@ import { DEFAULT_HOME_CAROUSEL_SLIDE_INPUTS } from '@/lib/home-carousel';
 import { HOME_CAROUSEL_BUCKET } from '@/lib/storage';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useErrorToast } from '@/components/ui/useErrorToast';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { ResourcePermissionState } from '@/lib/admin-permissions';
 import { getFirstZodError, homeCarouselSlideSchema, validateUploadFile } from '@/lib/validations';
 import type { ContentStatus, HomeCarouselTarget } from '@/types';
@@ -38,6 +39,13 @@ type FormValues = {
   sort_order: string;
   status: ContentStatus;
 };
+type DialogState =
+  | { open: false }
+  | {
+      open: true;
+      mode: 'trash' | 'purge';
+      row: Row;
+    };
 
 const targetOptions: Array<{ value: HomeCarouselTarget; label: string }> = [
   { value: 'events', label: 'الفعاليات' },
@@ -119,6 +127,7 @@ export default function HomeCarouselManager({
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<'active' | 'trash' | 'all'>('active');
   const [error, setError] = useState('');
+  const [dialogState, setDialogState] = useState<DialogState>({ open: false });
 
   useErrorToast(error);
 
@@ -313,8 +322,11 @@ export default function HomeCarouselManager({
     }
   }
 
+  function requestTrash(row: Row) {
+    setDialogState({ open: true, mode: 'trash', row });
+  }
+
   async function handleTrash(row: Row) {
-    if (!window.confirm('نقل هذه الشريحة إلى سلة المهملات؟')) return;
     setDeletingId(row.id);
     setError('');
 
@@ -363,8 +375,11 @@ export default function HomeCarouselManager({
     }
   }
 
+  function requestPermanentDelete(row: Row) {
+    setDialogState({ open: true, mode: 'purge', row });
+  }
+
   async function handlePermanentDelete(row: Row) {
-    if (!window.confirm('حذف نهائي لهذه الشريحة؟')) return;
     setDeletingId(row.id);
     setError('');
 
@@ -388,6 +403,17 @@ export default function HomeCarouselManager({
     } finally {
       setDeletingId(null);
     }
+  }
+
+  async function handleDialogConfirm() {
+    if (!dialogState.open) return;
+    const { row, mode } = dialogState;
+    setDialogState({ open: false });
+    if (mode === 'trash') {
+      await handleTrash(row);
+      return;
+    }
+    await handlePermanentDelete(row);
   }
 
   async function handleSeedDefaults() {
@@ -430,6 +456,23 @@ export default function HomeCarouselManager({
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog
+        key={dialogState.open ? `${dialogState.mode}:${dialogState.row.id}` : 'carousel-dialog-closed'}
+        open={dialogState.open}
+        onClose={() => setDialogState({ open: false })}
+        onConfirm={() => void handleDialogConfirm()}
+        title={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائي للشريحة' : 'نقل الشريحة إلى المهملات'}
+        description={
+          dialogState.open && dialogState.mode === 'purge'
+            ? 'سيتم حذف الشريحة نهائيًا من قاعدة البيانات والتخزين، ولا يمكن استعادتها بعد ذلك.'
+            : 'سيتم إخفاء الشريحة من الكاروسيل ويمكن استعادتها لاحقًا من المهملات.'
+        }
+        confirmLabel={dialogState.open && dialogState.mode === 'purge' ? 'حذف نهائيًا' : 'نقل إلى المهملات'}
+        confirmVariant={dialogState.open && dialogState.mode === 'purge' ? 'destructive' : 'filled'}
+        loading={Boolean(dialogState.open && deletingId === dialogState.row.id)}
+        verificationText={dialogState.open && dialogState.mode === 'purge' ? dialogState.row.title : null}
+        verificationLabel="أعد كتابة عنوان الشريحة للتأكيد"
+      />
       <section className="md-card-outlined p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -469,7 +512,7 @@ export default function HomeCarouselManager({
                 الشرائح الحالية
               </h3>
               <p className="md-body-small mt-1" style={{ color: 'var(--md-on-surface-variant)' }}>
-                {readOnly ? 'يمكنك استعراض الشرائح الحالية فقط.' : 'اختر شريحة للتعديل، أو انقلها إلى المهملات ثم استرجعها لاحقا.'}
+                {readOnly ? 'يمكنك استعراض الشرائح الحالية فقط.' : 'اختر شريحة للتعديل، أو انقلها إلى المهملات ثم استعدها لاحقًا.'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -562,17 +605,17 @@ export default function HomeCarouselManager({
                           </button>
                         ) : null}
                         {canDelete && !isTrashed ? (
-                          <button type="button" onClick={() => void handleTrash(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13, background: 'var(--md-warning-container)', color: 'var(--md-on-warning-container)', borderRadius: 'var(--md-shape-full)' }}>
-                            {deletingId === row.id ? '...' : 'إلى المهملات'}
+                          <button type="button" onClick={() => requestTrash(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13, background: 'var(--md-warning-container)', color: 'var(--md-on-warning-container)', borderRadius: 'var(--md-shape-full)' }}>
+                            {deletingId === row.id ? '...' : 'نقل إلى المهملات'}
                           </button>
                         ) : null}
                         {canDelete && isTrashed ? (
                           <>
                             <button type="button" onClick={() => void handleRestore(row)} disabled={restoringId === row.id} className="md-btn md-btn-tonal md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13 }}>
-                              {restoringId === row.id ? '...' : 'استرجاع'}
+                              {restoringId === row.id ? '...' : 'استعادة'}
                             </button>
-                            <button type="button" onClick={() => void handlePermanentDelete(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13, background: 'var(--md-error-container)', color: 'var(--md-on-error-container)', borderRadius: 'var(--md-shape-full)' }}>
-                              {deletingId === row.id ? '...' : 'حذف نهائي'}
+                            <button type="button" onClick={() => requestPermanentDelete(row)} disabled={deletingId === row.id} className="md-btn md-state disabled:opacity-50" style={{ height: 36, padding: '0 14px', fontSize: 13, background: 'var(--md-error-container)', color: 'var(--md-on-error-container)', borderRadius: 'var(--md-shape-full)' }}>
+                              {deletingId === row.id ? '...' : 'حذف نهائيًا'}
                             </button>
                           </>
                         ) : null}
