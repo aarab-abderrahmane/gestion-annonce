@@ -219,11 +219,8 @@ export default function LoginForm() {
       </div>
 
       <div
-        className="rounded-[24px] border px-4 py-4"
-        style={{
-          background: 'var(--md-surface-container-lowest)',
-          borderColor: 'var(--md-outline-variant)',
-        }}
+        className="border-t px-4 py-4"
+     
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <span className="text-[13px] font-semibold" style={{ color: 'var(--md-on-surface-variant)' }}>
