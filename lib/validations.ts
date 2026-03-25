@@ -3,9 +3,14 @@ import {
   ADMIN_ACCOUNT_STATUS_VALUES,
   ADMIN_RESOURCE_VALUES,
 } from '@/lib/admin-permissions';
+import { DANGER_NEWS_ICON_VALUES } from '@/lib/danger-news';
 
 const contentStatusSchema = z.enum(['draft', 'published']);
 const nonEmptyString = z.string().trim().min(1, 'هذا الحقل مطلوب.');
+const hexColorSchema = z
+  .string()
+  .trim()
+  .regex(/^#([0-9a-fA-F]{6})$/, 'اللون يجب أن يكون بصيغة HEX مثل #C62828.');
 const optionalDateString = z
   .string()
   .trim()
@@ -17,6 +22,12 @@ export const breakingNewsSchema = z.object({
   title: nonEmptyString.max(200, 'العنوان طويل جداً.'),
   slug: z.string().trim().optional().or(z.literal('')),
   level: z.enum(['dangerous', 'urgent', 'warning']),
+  status: contentStatusSchema,
+  expires_at: nonEmptyString.refine((value) => !Number.isNaN(Date.parse(value)), 'تاريخ الانتهاء غير صالح.'),
+});
+
+export const dangerNewsSchema = z.object({
+  title: nonEmptyString.max(200, 'العنوان طويل جداً.'),
   status: contentStatusSchema,
   expires_at: nonEmptyString.refine((value) => !Number.isNaN(Date.parse(value)), 'تاريخ الانتهاء غير صالح.'),
 });
@@ -36,6 +47,20 @@ export const homeCarouselSlideSchema = z.object({
   target: homeCarouselTargetSchema,
   sort_order: z.coerce.number().int().min(1, 'الترتيب يجب أن يكون 1 أو أكثر.'),
   status: contentStatusSchema,
+});
+
+export const dangerNewsTickerSettingsSchema = z.object({
+  is_enabled: z.boolean(),
+  badge_label: nonEmptyString.max(60, 'شارة الشريط طويلة جداً.'),
+  title: nonEmptyString.max(120, 'عنوان الشريط طويل جداً.'),
+  speed_seconds: z.coerce.number().int().min(5, 'سرعة الشريط يجب أن تكون 5 ثوانٍ أو أكثر.').max(120, 'سرعة الشريط يجب ألا تتجاوز 120 ثانية.'),
+  max_items: z.coerce.number().int().min(1, 'عدد الأخبار يجب أن يكون 1 أو أكثر.').max(12, 'عدد الأخبار يجب ألا يتجاوز 12.'),
+  separator: nonEmptyString.max(10, 'الفاصل طويل جداً.'),
+  icon_name: z.enum(DANGER_NEWS_ICON_VALUES),
+  gradient_from_color: hexColorSchema,
+  gradient_to_color: hexColorSchema,
+  accent_color: hexColorSchema,
+  text_color: hexColorSchema,
 });
 
 export const adminLoginSchema = z.object({

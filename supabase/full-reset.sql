@@ -36,6 +36,16 @@ create table if not exists public.breaking_news (
   deleted_by uuid references auth.users(id) on delete set null
 );
 
+create table if not exists public.danger_news (
+  id uuid primary key default gen_random_uuid(),
+  title varchar(200) not null,
+  status text not null default 'draft' check (status in ('draft', 'published')),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  deleted_at timestamptz,
+  deleted_by uuid references auth.users(id) on delete set null
+);
+
 create table if not exists public.announcement_categories (
   id uuid primary key default gen_random_uuid(),
   name varchar(100) not null,
@@ -131,12 +141,31 @@ create table if not exists public.home_carousel_slides (
   deleted_by uuid references auth.users(id) on delete set null
 );
 
+create table if not exists public.danger_news_settings (
+  id uuid primary key default gen_random_uuid(),
+  is_enabled boolean not null default true,
+  badge_label text not null default 'تنبيه خطير',
+  title text not null default 'الشريط الخطير',
+  speed_seconds integer not null default 28 check (speed_seconds between 5 and 120),
+  max_items integer not null default 5 check (max_items between 1 and 12),
+  separator text not null default '•',
+  icon_name text not null default 'alert-triangle' check (icon_name in ('alert-triangle', 'shield-alert', 'bell-ring', 'siren', 'megaphone')),
+  gradient_from_color text not null default '#FFE4E1' check (gradient_from_color ~ '^#[0-9A-Fa-f]{6}$'),
+  gradient_to_color text not null default '#FFF5F2' check (gradient_to_color ~ '^#[0-9A-Fa-f]{6}$'),
+  accent_color text not null default '#C62828' check (accent_color ~ '^#[0-9A-Fa-f]{6}$'),
+  text_color text not null default '#5F2120' check (text_color ~ '^#[0-9A-Fa-f]{6}$'),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- ============================================
 -- 2. INDEXES
 -- ============================================
 
 create index if not exists idx_breaking_news_status on public.breaking_news(status);
 create index if not exists idx_breaking_news_deleted_at on public.breaking_news(deleted_at);
+create index if not exists idx_danger_news_status on public.danger_news(status);
+create index if not exists idx_danger_news_deleted_at on public.danger_news(deleted_at);
 create index if not exists idx_announcements_status on public.announcements(status);
 create index if not exists idx_announcements_deleted_at on public.announcements(deleted_at);
 create index if not exists idx_announcements_status_deleted_at
@@ -147,6 +176,8 @@ create index if not exists idx_home_carousel_slides_status_sort_order
   on public.home_carousel_slides(status, sort_order asc, created_at asc);
 create index if not exists idx_home_carousel_slides_deleted_at
   on public.home_carousel_slides(deleted_at);
+create unique index if not exists idx_danger_news_settings_singleton
+  on public.danger_news_settings((true));
 
 create index if not exists idx_announcement_files_announcement_id
   on public.announcement_files(announcement_id);
@@ -176,6 +207,22 @@ create trigger trg_home_carousel_slides_updated_at
 before update on public.home_carousel_slides
 for each row
 execute function public.set_home_carousel_slides_updated_at();
+
+create or replace function public.set_danger_news_settings_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_danger_news_settings_updated_at on public.danger_news_settings;
+create trigger trg_danger_news_settings_updated_at
+before update on public.danger_news_settings
+for each row
+execute function public.set_danger_news_settings_updated_at();
 
 -- ============================================
 -- 4. ADMIN FUNCTION
@@ -207,6 +254,7 @@ $$;
 alter table public.divisions enable row level security;
 alter table public.groups enable row level security;
 alter table public.breaking_news enable row level security;
+alter table public.danger_news enable row level security;
 alter table public.announcement_categories enable row level security;
 alter table public.announcements enable row level security;
 alter table public.announcement_files enable row level security;
@@ -217,6 +265,7 @@ alter table public.event_people enable row level security;
 alter table public.event_photos enable row level security;
 alter table public.event_category_links enable row level security;
 alter table public.home_carousel_slides enable row level security;
+alter table public.danger_news_settings enable row level security;
 
 -- ============================================
 -- 6. PUBLIC SELECT POLICIES
@@ -239,6 +288,13 @@ using (true);
 drop policy if exists breaking_news_public_select on public.breaking_news;
 create policy breaking_news_public_select
 on public.breaking_news
+for select
+to anon, authenticated
+using (status = 'published' and deleted_at is null);
+
+drop policy if exists danger_news_public_select on public.danger_news;
+create policy danger_news_public_select
+on public.danger_news
 for select
 to anon, authenticated
 using (status = 'published' and deleted_at is null);
@@ -348,6 +404,13 @@ for select
 to anon, authenticated
 using (status = 'published' and deleted_at is null);
 
+drop policy if exists danger_news_settings_public_select on public.danger_news_settings;
+create policy danger_news_settings_public_select
+on public.danger_news_settings
+for select
+to anon, authenticated
+using (true);
+
 -- ============================================
 -- 7. ADMIN POLICIES
 -- ============================================
@@ -371,6 +434,14 @@ with check (public.is_admin());
 drop policy if exists breaking_news_admin_all on public.breaking_news;
 create policy breaking_news_admin_all
 on public.breaking_news
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists danger_news_admin_all on public.danger_news;
+create policy danger_news_admin_all
+on public.danger_news
 for all
 to authenticated
 using (public.is_admin())
@@ -601,6 +672,35 @@ where not exists (
   select 1 from public.home_carousel_slides
 );
 
+insert into public.danger_news_settings (
+  is_enabled,
+  badge_label,
+  title,
+  speed_seconds,
+  max_items,
+  separator,
+  icon_name,
+  gradient_from_color,
+  gradient_to_color,
+  accent_color,
+  text_color
+)
+select
+  true,
+  'تنبيه خطير',
+  'الشريط الخطير',
+  28,
+  5,
+  '•',
+  'alert-triangle',
+  '#FFE4E1',
+  '#FFF5F2',
+  '#C62828',
+  '#5F2120'
+where not exists (
+  select 1 from public.danger_news_settings
+);
+
 -- ============================================
 -- 11. SET ADMIN USER
 -- Make sure this email already exists in Supabase Auth
@@ -639,6 +739,7 @@ create table if not exists public.dashboard_account_permissions (
   resource text not null check (
     resource in (
       'breaking_news',
+      'danger_news',
       'home_carousel',
       'announcements',
       'events',
@@ -809,6 +910,7 @@ using (public.is_admin())
 with check (public.is_admin());
 
 drop policy if exists breaking_news_admin_all on public.breaking_news;
+drop policy if exists danger_news_admin_all on public.danger_news;
 drop policy if exists announcements_admin_all on public.announcements;
 drop policy if exists announcement_files_admin_all on public.announcement_files;
 drop policy if exists announcement_category_links_admin_all on public.announcement_category_links;
@@ -821,6 +923,7 @@ drop policy if exists groups_admin_all on public.groups;
 drop policy if exists announcement_categories_admin_all on public.announcement_categories;
 drop policy if exists event_categories_admin_all on public.event_categories;
 drop policy if exists home_carousel_slides_admin_all on public.home_carousel_slides;
+drop policy if exists danger_news_settings_admin_all on public.danger_news_settings;
 
 drop policy if exists breaking_news_dashboard_select on public.breaking_news;
 create policy breaking_news_dashboard_select
@@ -859,6 +962,44 @@ on public.breaking_news
 for delete
 to authenticated
 using (public.has_admin_permission('breaking_news', 'delete'));
+
+drop policy if exists danger_news_dashboard_select on public.danger_news;
+create policy danger_news_dashboard_select
+on public.danger_news
+for select
+to authenticated
+using (public.has_admin_permission('danger_news', 'view'));
+
+drop policy if exists danger_news_dashboard_insert on public.danger_news;
+create policy danger_news_dashboard_insert
+on public.danger_news
+for insert
+to authenticated
+with check (
+  public.has_admin_permission('danger_news', 'create')
+  and (status <> 'published' or public.has_admin_permission('danger_news', 'publish'))
+);
+
+drop policy if exists danger_news_dashboard_update on public.danger_news;
+create policy danger_news_dashboard_update
+on public.danger_news
+for update
+to authenticated
+using (
+  public.has_admin_permission('danger_news', 'update')
+  and (status <> 'published' or public.has_admin_permission('danger_news', 'publish'))
+)
+with check (
+  public.has_admin_permission('danger_news', 'update')
+  and (status <> 'published' or public.has_admin_permission('danger_news', 'publish'))
+);
+
+drop policy if exists danger_news_dashboard_delete on public.danger_news;
+create policy danger_news_dashboard_delete
+on public.danger_news
+for delete
+to authenticated
+using (public.has_admin_permission('danger_news', 'delete'));
 
 drop policy if exists announcements_dashboard_select on public.announcements;
 create policy announcements_dashboard_select
@@ -1324,6 +1465,28 @@ on public.home_carousel_slides
 for delete
 to authenticated
 using (public.has_admin_permission('home_carousel', 'delete'));
+
+drop policy if exists danger_news_settings_dashboard_select on public.danger_news_settings;
+create policy danger_news_settings_dashboard_select
+on public.danger_news_settings
+for select
+to authenticated
+using (public.has_admin_permission('danger_news', 'view'));
+
+drop policy if exists danger_news_settings_dashboard_insert on public.danger_news_settings;
+create policy danger_news_settings_dashboard_insert
+on public.danger_news_settings
+for insert
+to authenticated
+with check (public.has_admin_permission('danger_news', 'create'));
+
+drop policy if exists danger_news_settings_dashboard_update on public.danger_news_settings;
+create policy danger_news_settings_dashboard_update
+on public.danger_news_settings
+for update
+to authenticated
+using (public.has_admin_permission('danger_news', 'update'))
+with check (public.has_admin_permission('danger_news', 'update'));
 
 drop policy if exists authenticated_upload_announcements_bucket on storage.objects;
 create policy authenticated_upload_announcements_bucket

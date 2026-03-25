@@ -4,6 +4,10 @@ import type { Metadata } from 'next';
 import HomeRoute from '@/components/legacy/HomeRoute';
 import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import { hydrateAnnouncementFiles } from '@/lib/announcement-files';
+import {
+  normalizeDangerNewsItem,
+  normalizeDangerNewsTickerSettings,
+} from '@/lib/danger-news';
 import { collectErrorMessages } from '@/lib/errors';
 import { normalizeHomeCarouselSlide } from '@/lib/home-carousel';
 import {
@@ -28,7 +32,9 @@ export default async function Page() {
     { data: breakingNewsData, error: newsError },
     { data: announcementsData, error: announcementsError },
     { data: eventsData, error: eventsError },
+    { data: dangerNewsData, error: dangerNewsError },
     { data: slidesData, error: slidesError },
+    { data: dangerTickerData, error: dangerTickerError },
   ] = await Promise.all([
     supabase
       .from('breaking_news')
@@ -59,12 +65,23 @@ export default async function Page() {
       .is('deleted_at', null)
       .order('starts_at', { ascending: false }),
     supabase
+      .from('danger_news')
+      .select('id, title, status, created_at, expires_at')
+      .eq('status', 'published')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    supabase
       .from('home_carousel_slides')
       .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at')
       .eq('status', 'published')
       .is('deleted_at', null)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true }),
+    supabase
+      .from('danger_news_settings')
+      .select('id, is_enabled, badge_label, title, speed_seconds, max_items, separator, icon_name, gradient_from_color, gradient_to_color, accent_color, text_color, created_at, updated_at')
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const announcementFileErrors: string[] = [];
@@ -81,17 +98,28 @@ export default async function Page() {
     announcementsError,
     eventsError,
     slidesError,
+    dangerNewsError,
+    dangerTickerError,
     ...announcementFileErrors,
   ]);
   const news = (breakingNewsData ?? []).map(normalizeNews);
+  const dangerNewsItems = (dangerNewsData ?? []).map(normalizeDangerNewsItem);
   const announcements = announcementsWithFiles.map(normalizeAnnouncement);
   const events = (eventsData ?? []).map(normalizeEvent);
   const slides = (slidesData ?? []).map(normalizeHomeCarouselSlide);
+  const dangerTickerSettings = normalizeDangerNewsTickerSettings(dangerTickerData);
 
   return (
     <>
       <ErrorToastTrigger messages={pageErrors} />
-      <HomeRoute announcements={announcements} newsItems={news} events={events} slides={slides} />
+      <HomeRoute
+        announcements={announcements}
+        newsItems={news}
+        dangerNewsItems={dangerNewsItems}
+        events={events}
+        slides={slides}
+        dangerTickerSettings={dangerTickerSettings}
+      />
     </>
   );
 }

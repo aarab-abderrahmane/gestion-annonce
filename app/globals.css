@@ -544,6 +544,21 @@
       overflow: hidden;
     }
 
+    .dangerous-news-ticker-shell {
+      overflow: hidden;
+    }
+
+    .dangerous-news-ticker-track {
+      width: max-content;
+      will-change: transform;
+      animation: dangerous-news-ticker var(--dangerous-news-ticker-duration, 28s) linear infinite;
+    }
+
+    .dangerous-news-ticker-track:hover,
+    .dangerous-news-ticker-track:focus-within {
+      animation-play-state: paused;
+    }
+
     @keyframes toast-in {
       from {
         opacity: 0;
@@ -563,5 +578,29 @@
 
       to {
         transform: rotate(360deg);
+      }
+    }
+
+    @keyframes dangerous-news-ticker {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(calc(-100% / var(--dangerous-news-repeat-count, 2)));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dangerous-news-ticker-shell {
+        overflow-x: auto;
+      }
+
+      .dangerous-news-ticker-track {
+        animation: none;
+      }
+
+      .dangerous-news-ticker-segment--duplicate {
+        display: none;
       }
     }

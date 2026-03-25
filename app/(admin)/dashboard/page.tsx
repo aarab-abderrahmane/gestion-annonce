@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
+  AlertTriangle,
   ArrowUpRight,
   BellRing,
   Building2,
@@ -27,11 +28,29 @@ export default async function DashboardPage() {
 
   const supabase = await createClient();
 
-  const [breakingCount, announcementsCount, eventsCount, divisionsCount, announcementsRes, eventsRes] = await Promise.all([
+  const [
+    breakingCount,
+    dangerNewsCount,
+    announcementsCount,
+    eventsCount,
+    divisionsCount,
+    dangerTickerRes,
+    announcementsRes,
+    eventsRes,
+  ] = await Promise.all([
     supabase.from('breaking_news').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+    supabase
+      .from('danger_news')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null),
     supabase.from('announcements').select('*', { count: 'exact', head: true }).is('deleted_at', null),
     supabase.from('events').select('*', { count: 'exact', head: true }).is('deleted_at', null),
     supabase.from('divisions').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('danger_news_settings')
+      .select('is_enabled, speed_seconds, max_items')
+      .limit(1)
+      .maybeSingle(),
     supabase
       .from('announcements')
       .select('id, title, slug, published_at, status')
@@ -54,6 +73,14 @@ export default async function DashboardPage() {
       icon: <BellRing size={22} style={{ color: 'var(--md-on-error-container)' }} />,
       hint: 'تنبيهات عاجلة ومحتوى فوري',
       trend: 'متابعة لحظية',
+    },
+    {
+      label: 'عناصر الشريط الخطير',
+      value: dangerNewsCount.count ?? 0,
+      accent: 'color-mix(in srgb, var(--md-error-container) 82%, white 18%)',
+      icon: <AlertTriangle size={22} style={{ color: 'var(--md-on-error-container)' }} />,
+      hint: 'عناصر مستقلة عن الأخبار العاجلة',
+      trend: dangerTickerRes.data?.is_enabled ? 'الشريط مفعّل' : 'الشريط متوقف',
     },
     {
       label: 'الإعلانات',
@@ -89,6 +116,16 @@ export default async function DashboardPage() {
       icon: BellRing,
       accent: 'var(--md-error-container)',
       tone: 'var(--md-on-error-container)',
+      isContentModule: true,
+    },
+    {
+      href: '/dashboard/danger-news',
+      label: 'الشريط الخطير',
+      description: 'أدر عناصر الشريط الخطير واضبط سرعته والعناصر الظاهرة فيه.',
+      icon: AlertTriangle,
+      accent: 'color-mix(in srgb, var(--md-error-container) 82%, white 18%)',
+      tone: 'var(--md-on-error-container)',
+      isContentModule: true,
     },
     {
       href: '/dashboard/announcements',
@@ -97,6 +134,7 @@ export default async function DashboardPage() {
       icon: Newspaper,
       accent: 'var(--md-primary-container)',
       tone: 'var(--md-on-primary-container)',
+      isContentModule: true,
     },
     {
       href: '/dashboard/events',
@@ -105,6 +143,7 @@ export default async function DashboardPage() {
       icon: CalendarDays,
       accent: 'var(--md-tertiary-container)',
       tone: 'var(--md-on-tertiary-container)',
+      isContentModule: true,
     },
     {
       href: '/dashboard/home-carousel',
@@ -113,6 +152,7 @@ export default async function DashboardPage() {
       icon: Images,
       accent: 'var(--md-secondary-container)',
       tone: 'var(--md-on-secondary-container)',
+      isContentModule: true,
     },
     {
       href: '/dashboard/structure',
@@ -121,6 +161,7 @@ export default async function DashboardPage() {
       icon: FolderTree,
       accent: 'var(--md-surface-container-highest)',
       tone: 'var(--md-on-surface)',
+      isContentModule: false,
     },
     {
       href: '/dashboard/accounts',
@@ -129,8 +170,10 @@ export default async function DashboardPage() {
       icon: Users,
       accent: 'var(--md-surface-container-highest)',
       tone: 'var(--md-on-surface)',
+      isContentModule: false,
     },
   ];
+  const contentModuleCount = quickActions.filter((item) => item.isContentModule).length;
 
   return (
     <div className="mx-auto w-full max-w-[1480px] space-y-6 2xl:max-w-[1520px]">
@@ -168,14 +211,17 @@ export default async function DashboardPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard/announcements/new" className="md-btn md-btn-filled md-state">
+              <Link href="/dashboard/announcements/create" className="md-btn md-btn-filled md-state">
                 إعلان جديد
               </Link>
-              <Link href="/dashboard/events/new" className="md-btn md-btn-tonal md-state">
+              <Link href="/dashboard/events/create" className="md-btn md-btn-tonal md-state">
                 فعالية جديدة
               </Link>
-              <Link href="/dashboard/breaking-news/new" className="md-btn md-btn-outlined md-state">
+              <Link href="/dashboard/breaking-news/create" className="md-btn md-btn-outlined md-state">
                 خبر عاجل جديد
+              </Link>
+              <Link href="/dashboard/danger-news" className="md-btn md-btn-outlined md-state">
+                تخصيص الشريط الخطير
               </Link>
             </div>
           </div>
@@ -216,7 +262,7 @@ export default async function DashboardPage() {
               <div className="mt-4 grid gap-3">
                 <div className="flex items-center justify-between rounded-[var(--md-shape-l)] px-4 py-3" style={{ background: 'var(--md-surface-container)' }}>
                   <span className="md-body-medium" style={{ color: 'var(--md-on-surface)' }}>وحدات المحتوى النشطة</span>
-                  <span className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>4</span>
+                  <span className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>{contentModuleCount}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-[var(--md-shape-l)] px-4 py-3" style={{ background: 'var(--md-surface-container)' }}>
                   <span className="md-body-medium" style={{ color: 'var(--md-on-surface)' }}>المسارات السريعة</span>
@@ -228,7 +274,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {stats.map((item) => (
           <StatsCard
             key={item.label}
@@ -323,6 +369,15 @@ export default async function DashboardPage() {
                 <span className="md-body-medium" style={{ color: 'var(--md-on-surface)' }}>الحسابات المفوضة</span>
                 <ArrowUpRight size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
               </Link>
+              <Link href="/dashboard/danger-news" className="flex items-center justify-between rounded-[var(--md-shape-l)] px-4 py-3 md-state" style={{ background: 'var(--md-surface-container-low)' }}>
+                <span className="md-body-medium" style={{ color: 'var(--md-on-surface)' }}>
+                  الشريط الخطير
+                  <span className="mr-2 text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
+                    {dangerTickerRes.data?.is_enabled ? `مفعّل • ${dangerTickerRes.data.max_items} عناصر • ${dangerTickerRes.data.speed_seconds}s` : 'متوقف'}
+                  </span>
+                </span>
+                <ArrowUpRight size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
+              </Link>
               <Link href="/dashboard/structure" className="flex items-center justify-between rounded-[var(--md-shape-l)] px-4 py-3 md-state" style={{ background: 'var(--md-surface-container-low)' }}>
                 <span className="md-body-medium" style={{ color: 'var(--md-on-surface)' }}>الهيكلة والتصنيفات</span>
                 <ArrowUpRight size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
@@ -338,7 +393,7 @@ export default async function DashboardPage() {
               <div className="flex items-center justify-between">
                 <span className="md-body-medium" style={{ color: 'var(--md-on-surface)' }}>إجمالي المحتوى</span>
                 <span className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>
-                  {(breakingCount.count ?? 0) + (announcementsCount.count ?? 0) + (eventsCount.count ?? 0)}
+                  {(breakingCount.count ?? 0) + (dangerNewsCount.count ?? 0) + (announcementsCount.count ?? 0) + (eventsCount.count ?? 0)}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--md-surface-container-highest)' }}>

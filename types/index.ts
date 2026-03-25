@@ -1,10 +1,37 @@
 export type ContentStatus = 'draft' | 'published';
 export type RiskLevel = 'low' | 'medium' | 'high';
 export type BreakingNewsLevel = 'dangerous' | 'urgent' | 'warning';
+export type DangerNewsIconName = 'alert-triangle' | 'shield-alert' | 'bell-ring' | 'siren' | 'megaphone';
 export type AnnouncementFileType = 'pdf' | 'image';
 export type EventPersonType = 'participant' | 'organizer';
 export type SearchResultType = 'announcement' | 'event' | 'breaking-news';
 export type HomeCarouselTarget = 'home' | 'announcements' | 'important-info' | 'events';
+
+export interface DangerNewsTickerSettings {
+  id?: string;
+  isEnabled: boolean;
+  badgeLabel: string;
+  title: string;
+  speedSeconds: number;
+  maxItems: number;
+  separator: string;
+  iconName: DangerNewsIconName;
+  gradientFromColor: string;
+  gradientToColor: string;
+  accentColor: string;
+  textColor: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DangerNewsItem {
+  id: string;
+  title: string;
+  status?: ContentStatus;
+  expiryDate: string;
+  createdAt?: string;
+  deletedAt?: string | null;
+}
 
 export interface Division {
   id: string;
