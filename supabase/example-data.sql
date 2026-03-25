@@ -240,3 +240,214 @@ cross join (
     ('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1400&q=80')
 ) as photos(photo_url)
 where e.slug = 'ui-design-workshop';
+
+
+
+
+
+
+
+
+
+
+-- 1. Create example auth users                                                                                                      
+  with users_to_create as (                                                                                                            
+    select *                                                                                                                           
+    from (                                                                                                                             
+      values                                                                                                                           
+        ('admin@example.com', 'Admin123!', 'Main Admin', true),                                                                        
+        ('staff1@example.com', 'Staff123!', 'Staff One', false),                                                                       
+        ('staff2@example.com', 'Staff123!', 'Staff Two', false),                                                                       
+        ('staff3@example.com', 'Staff123!', 'Staff Three', false),                                                                     
+        ('staff4@example.com', 'Staff123!', 'Staff Four', false)                                                                       
+    ) as v(email, password, full_name, is_admin)                                                                                       
+  ),                                                                                                                                   
+  inserted_users as (                                                                                                                  
+    insert into auth.users (                                                                                                           
+      instance_id,                                                                                                                     
+      id,                                                                                                                              
+      aud,                                                                                                                             
+      role,                                                                                                                            
+      email,                                                                                                                           
+      encrypted_password,                                                                                                              
+      email_confirmed_at,                                                                                                              
+      raw_app_meta_data,                                                                                                               
+      raw_user_meta_data,                                                                                                              
+      created_at,                                                                                                                      
+      updated_at,                                                                                                                      
+      confirmation_token,                                                                                                              
+      email_change,                                                                                                                    
+      email_change_token_new,                                                                                                          
+      recovery_token                                                                                                                   
+    )                                                                                                                                  
+    select                                                                                                                             
+      '00000000-0000-0000-0000-000000000000',                                                                                          
+      gen_random_uuid(),                                                                                                               
+      'authenticated',                                                                                                                 
+      'authenticated',                                                                                                                 
+      u.email,                                                                                                                         
+      crypt(u.password, gen_salt('bf')),                                                                                               
+      now(),                                                                                                                           
+      case                                                                                                                             
+        when u.is_admin then '{"provider":"email","providers":["email"],"role":"admin"}'::jsonb                                        
+        else '{"provider":"email","providers":["email"]}'::jsonb                                                                       
+      end,                                                                                                                             
+      jsonb_build_object('full_name', u.full_name),                                                                                    
+      now(),                                                                                                                           
+      now(),                                                                                                                           
+      '',                                                                                                                              
+      '',                                                                                                                              
+      '',                                                                                                                              
+      ''                                                                                                                               
+    from users_to_create u                                                                                                             
+    where not exists (                                                                                                                 
+      select 1                                                                                                                         
+      from auth.users au                                                                                                               
+      where au.email = u.email                                                                                                         
+    )                                                                                                                                  
+    returning id, email, raw_app_meta_data                                                                                             
+  ),                                                                                                                                   
+  all_target_users as (                                                                                                                
+    select id, email, raw_app_meta_data                                                                                                
+    from auth.users                                                                                                                    
+    where email in (                                                                                                                   
+      'admin@example.com',                                                                                                             
+      'staff1@example.com',                                                                                                            
+      'staff2@example.com',                                                                                                            
+      'staff3@example.com',                                                                                                            
+      'staff4@example.com'                                                                                                             
+    )                                                                                                                                  
+  )                                                                                                                                    
+  insert into auth.identities (                                                                                                        
+    id,                                                                                                                                
+    user_id,                                                                                                                           
+    identity_data,                                                                                                                     
+    provider,                                                                                                                          
+    provider_id,                                                                                                                       
+    last_sign_in_at,                                                                                                                   
+    created_at,                                                                                                                        
+    updated_at                                                                                                                         
+  )                                                                                                                                    
+  select                                                                                                                               
+    gen_random_uuid(),                                                                                                                 
+    u.id,                                                                                                                              
+    jsonb_build_object(                                                                                                                
+      'sub', u.id::text,                                                                                                               
+      'email', u.email                                                                                                                 
+    ),                                                                                                                                 
+    'email',                                                                                                                           
+    u.id::text,                                                                                                                        
+    now(),                                                                                                                             
+    now(),                                                                                                                             
+    now()                                                                                                                              
+  from all_target_users u                                                                                                              
+  where not exists (                                                                                                                   
+    select 1                                                                                                                           
+    from auth.identities i                                                                                                             
+    where i.user_id = u.id                                                                                                             
+      and i.provider = 'email'                                                                                                         
+  );                                                                                                                                   
+                                                                                                                                       
+  -- 2. Create delegated dashboard accounts for the 4 staff users                                                                      
+  with admin_user as (                                                                                                                 
+    select id                                                                                                                          
+    from auth.users                                                                                                                    
+    where email = 'admin@example.com'                                                                                                  
+    limit 1                                                                                                                            
+  ),                                                                                                                                   
+  staff_users as (                                                                                                                     
+    select                                                                                                                             
+      id as user_id,                                                                                                                   
+      email,                                                                                                                           
+      coalesce(raw_user_meta_data ->> 'full_name', split_part(email, '@', 1)) as full_name                                             
+    from auth.users                                                                                                                    
+    where email in (                                                                                                                   
+      'staff1@example.com',                                                                                                            
+      'staff2@example.com',                                                                                                            
+      'staff3@example.com',                                                                                                            
+      'staff4@example.com'                                                                                                             
+    )                                                                                                                                  
+  ),                                                                                                                                   
+  upsert_accounts as (                                                                                                                 
+    insert into public.dashboard_accounts (                                                                                            
+      user_id,                                                                                                                         
+      full_name,                                                                                                                       
+      email,                                                                                                                           
+      status,                                                                                                                          
+      created_by                                                                                                                       
+    )                                                                                                                                  
+    select                                                                                                                             
+      s.user_id,                                                                                                                       
+      s.full_name,                                                                                                                     
+      s.email,                                                                                                                         
+      'active',                                                                                                                        
+      (select id from admin_user)                                                                                                      
+    from staff_users s                                                                                                                 
+    on conflict (user_id) do update                                                                                                    
+    set                                                                                                                                
+      full_name = excluded.full_name,                                                                                                  
+      email = excluded.email,                                                                                                          
+      status = excluded.status,                                                                                                        
+      created_by = excluded.created_by,                                                                                                
+      updated_at = now()                                                                                                               
+    returning id, user_id                                                                                                              
+  ),                                                                                                                                   
+  target_accounts as (                                                                                                                 
+    select da.id, da.user_id, da.email                                                                                                 
+    from public.dashboard_accounts da                                                                                                  
+    join staff_users s on s.user_id = da.user_id                                                                                       
+  ),                                                                                                                                   
+  deleted_permissions as (                                                                                                             
+    delete from public.dashboard_account_permissions p                                                                                 
+    using target_accounts ta                                                                                                           
+    where p.account_id = ta.id                                                                                                         
+  )
+  insert into public.dashboard_account_permissions (                                                                                   
+    account_id,                                                                                                                        
+    resource,                                                                                                                          
+    can_view,                                                                                                                          
+    can_create,                                                                                                                        
+    can_update,                                                                                                                        
+    can_delete,                                                                                                                        
+    can_publish                                                                                                                        
+  )                                                                                                                                    
+  select                                                                                                                               
+    ta.id,
+    r.resource,                                                                                                                        
+    true,                                                                                                                              
+    (random() < 0.6),                                                                                                                  
+    (random() < 0.6),                                                                                                                  
+    (random() < 0.4),                                                                                                                  
+    (random() < 0.3)                                                                                                                   
+  from target_accounts ta                                                                                                              
+  cross join (                                                                                                                         
+    values                                                                                                                             
+      ('breaking_news'::text),                                                                                                         
+      ('home_carousel'::text),                                                                                                         
+      ('announcements'::text),                                                                                                         
+      ('events'::text),                                                                                                                
+      ('categories'::text),                                                                                                            
+      ('structure'::text)                                                                                                              
+  ) as r(resource);                                                                                                                    
+                                                                                                                                       
+  -- 3. Verify                                                                                                                         
+  select                                                                                                                               
+    da.full_name,                                                                                                                      
+    da.email,                                                                                                                          
+    da.status,                                                                                                                         
+    dap.resource,                                                                                                                      
+    dap.can_view,                                                                                                                      
+    dap.can_create,                                                                                                                    
+    dap.can_update,                                                                                                                    
+    dap.can_delete,                                                                                                                    
+    dap.can_publish                                                                                                                    
+  from public.dashboard_accounts da                                                                                                    
+  left join public.dashboard_account_permissions dap                                                                                   
+    on dap.account_id = da.id                                                                                                          
+  where da.email in (
+    'staff1@example.com',                                                                                                              
+    'staff2@example.com',                                                                                                              
+    'staff3@example.com',                                                                                                              
+    'staff4@example.com'                                                                                                               
+  )                                                                                                                                    
+  order by da.email, dap.resource;   
