@@ -20,8 +20,8 @@ import { buildPublicMetadata } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = buildPublicMetadata({
-  title: 'الرئيسية | ISTA Ait Melloul',
-  description: 'الصفحة الرئيسية لمنصة gestion-annonces الخاصة بـ ISTA Ait Melloul لعرض الإعلانات والمعلومات المهمة والفعاليات.',
+  title: 'الرئيسية | مؤسسة التطوير',
+  description: 'الصفحة الرئيسية لمنصة gestion-annonces الخاصة بـ مؤسسة التطوير لعرض الإعلانات والمعلومات المهمة والفعاليات.',
   path: '/',
 });
 

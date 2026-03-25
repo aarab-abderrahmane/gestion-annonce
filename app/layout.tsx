@@ -8,10 +8,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: SITE_TITLE,
-  description: "المنصة الرسمية للإعلانات والفعاليات والمعلومات المهمة الخاصة بـ ISTA Ait Melloul.",
+  description: "المنصة الرسمية للإعلانات والفعاليات والمعلومات المهمة الخاصة بـ مؤسسة التطوير.",
   openGraph: {
     title: SITE_TITLE,
-    description: "المنصة الرسمية للإعلانات والفعاليات والمعلومات المهمة الخاصة بـ ISTA Ait Melloul.",
+    description: "المنصة الرسمية للإعلانات والفعاليات والمعلومات المهمة الخاصة بـ مؤسسة التطوير.",
     siteName: SITE_TITLE,
     locale: "ar_MA",
     type: "website",

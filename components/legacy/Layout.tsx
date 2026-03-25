@@ -80,13 +80,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
                   >
                     <img
                       src="/images/ofppt-logo.jpeg"
-                      alt="ISTA Ait Melloul logo"
+                      alt="مؤسسة التطوير logo"
                       className="h-full w-full object-cover"
                     />
                   </span>
                 </span>
                 <span className="md-title-medium hidden sm:block" style={{ color: 'var(--md-on-surface)' }}>
-                 ISTA AIT MELLOUL
+                 مؤسسة التطوير
                 </span>
               </button>
             </div>
