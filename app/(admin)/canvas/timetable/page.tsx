@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Download, Edit, Save, Settings, Clock } from 'lucide-react';
 import Image from 'next/image';
+import { toPng, toJpeg } from 'html-to-image';
+import jsPDF from 'jspdf';
 
 interface CourseEntry {
   subject: string;
@@ -73,6 +75,7 @@ export default function TimetablePage() {
   const [scheduleData, setScheduleData] = useState<ScheduleData>({});
   const [editingCell, setEditingCell] = useState<{ day: string; slot: string } | null>(null);
   const [formData, setFormData] = useState({ subject: '', room: '', duration: 1 });
+  const timetableRef = useRef<HTMLDivElement>(null);
 
   const [headerInfo, setHeaderInfo] = useState({
     academicYear: '2025/2026',
@@ -145,6 +148,63 @@ export default function TimetablePage() {
     setEditingCell(null);
   };
 
+  const handleDownloadImage = async () => {
+    if (!timetableRef.current) return;
+    
+    try {
+      const dataUrl = await toPng(timetableRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        filter: (node) => {
+          // Filter out any problematic nodes
+          return !node.classList?.contains('no-export');
+        },
+      });
+      
+      const link = document.createElement('a');
+      link.download = `emploi-du-temps-${headerInfo.groupName}-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Error generating image:', error);
+      alert('Erreur lors de la génération de l\'image');
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!timetableRef.current) return;
+    
+    try {
+      const dataUrl = await toJpeg(timetableRef.current, {
+        cacheBust: true,
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+      });
+      
+      const img = new window.Image();
+      img.src = dataUrl;
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+      
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [img.width, img.height],
+      });
+      
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, img.width, img.height);
+      pdf.save(`emploi-du-temps-${headerInfo.groupName}-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Erreur lors de la génération du PDF');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
@@ -179,11 +239,17 @@ export default function TimetablePage() {
                 </>
               )}
             </button>
-            <button className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center gap-2">
+            <button 
+              onClick={handleDownloadImage}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center gap-2"
+            >
               <Download className="w-4 h-4" />
               Image
             </button>
-            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+            <button 
+              onClick={handleDownloadPDF}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+            >
               <Download className="w-4 h-4" />
               PDF
             </button>
@@ -191,7 +257,7 @@ export default function TimetablePage() {
         </div>
 
         {/* Timetable Container */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div ref={timetableRef} data-timetable className="bg-white rounded-lg shadow-lg p-8">
           {/* Header Section */}
           <div className="mb-6 border-b pb-6">
             <div className="flex items-start justify-between mb-4">
