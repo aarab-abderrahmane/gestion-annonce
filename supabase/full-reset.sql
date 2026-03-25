@@ -11,34 +11,34 @@ create extension if not exists "pgcrypto";
 
 create table if not exists public.divisions (
   id uuid primary key default gen_random_uuid(),
-  name varchar(50) not null,
-  slug varchar(50) not null unique,
+  name text not null,
+  slug text not null unique,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.groups (
   id uuid primary key default gen_random_uuid(),
   division_id uuid not null references public.divisions(id) on delete cascade,
-  name varchar(50) not null,
-  slug varchar(50) not null unique,
+  name text not null,
+  slug text not null unique,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.breaking_news (
   id uuid primary key default gen_random_uuid(),
-  title varchar(150) not null,
-  slug varchar(200) not null unique,
+  title text not null,
+  slug text not null unique,
   level text not null check (level in ('dangerous', 'urgent', 'warning')),
-  status text not null default 'published' check (status in ('draft', 'published')),
+  status text not null default 'draft' check (status in ('draft', 'published')),
   created_at timestamptz not null default now(),
-  expires_at timestamptz not null,
+  expires_at timestamptz,
   deleted_at timestamptz,
   deleted_by uuid references auth.users(id) on delete set null
 );
 
 create table if not exists public.danger_news (
   id uuid primary key default gen_random_uuid(),
-  title varchar(200) not null,
+  title text not null,
   status text not null default 'draft' check (status in ('draft', 'published')),
   created_at timestamptz not null default now(),
   expires_at timestamptz not null,
@@ -48,21 +48,22 @@ create table if not exists public.danger_news (
 
 create table if not exists public.announcement_categories (
   id uuid primary key default gen_random_uuid(),
-  name varchar(100) not null,
-  slug varchar(100) not null unique,
+  name text not null,
+  slug text not null unique,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.announcements (
   id uuid primary key default gen_random_uuid(),
-  title varchar(150) not null,
-  slug varchar(200) not null unique,
+  title text not null,
+  slug text not null unique,
   description text,
-  division_id uuid not null references public.divisions(id),
-  group_id uuid references public.groups(id),
+  division_id uuid not null references public.divisions(id) on delete restrict,
+  group_id uuid references public.groups(id) on delete set null,
   status text not null default 'draft' check (status in ('draft', 'published')),
-  published_at timestamptz not null default now(),
+  published_at timestamptz,
   expires_at timestamptz,
+  created_at timestamptz not null default now(),
   deleted_at timestamptz,
   deleted_by uuid references auth.users(id) on delete set null
 );
@@ -79,26 +80,27 @@ create table if not exists public.announcement_files (
 create table if not exists public.announcement_category_links (
   announcement_id uuid not null references public.announcements(id) on delete cascade,
   category_id uuid not null references public.announcement_categories(id) on delete cascade,
+  created_at timestamptz not null default now(),
   primary key (announcement_id, category_id)
 );
 
 create table if not exists public.event_categories (
   id uuid primary key default gen_random_uuid(),
-  name varchar(100) not null,
-  slug varchar(100) not null unique,
+  name text not null,
+  slug text not null unique,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.events (
   id uuid primary key default gen_random_uuid(),
-  title varchar(150) not null,
-  slug varchar(200) not null unique,
+  title text not null,
+  slug text not null unique,
   description text,
   cover_image text,
-  location varchar(200),
+  location text,
   starts_at timestamptz not null,
   ends_at timestamptz not null,
-  total_attendees integer not null default 0,
+  total_attendees integer not null default 0 check (total_attendees >= 0),
   status text not null default 'draft' check (status in ('draft', 'published')),
   created_at timestamptz not null default now(),
   deleted_at timestamptz,
@@ -108,21 +110,23 @@ create table if not exists public.events (
 create table if not exists public.event_people (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
-  name varchar(100),
-  role varchar(100),
-  type text check (type in ('participant', 'organizer'))
+  name text not null,
+  role text not null,
+  type text not null check (type in ('participant', 'organizer')),
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.event_photos (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
-  photo_url text,
+  photo_url text not null,
   created_at timestamptz not null default now()
 );
 
 create table if not exists public.event_category_links (
   event_id uuid not null references public.events(id) on delete cascade,
   category_id uuid not null references public.event_categories(id) on delete cascade,
+  created_at timestamptz not null default now(),
   primary key (event_id, category_id)
 );
 
@@ -162,16 +166,37 @@ create table if not exists public.danger_news_settings (
 -- 2. INDEXES
 -- ============================================
 
-create index if not exists idx_breaking_news_status on public.breaking_news(status);
+create index if not exists idx_groups_division_id
+  on public.groups (division_id);
+
+create index if not exists idx_breaking_news_status_created_at
+  on public.breaking_news (status, created_at desc);
 create index if not exists idx_breaking_news_deleted_at on public.breaking_news(deleted_at);
+create index if not exists idx_breaking_news_search
+  on public.breaking_news
+  using gin (to_tsvector('simple', coalesce(title, '')));
 create index if not exists idx_danger_news_status on public.danger_news(status);
 create index if not exists idx_danger_news_deleted_at on public.danger_news(deleted_at);
-create index if not exists idx_announcements_status on public.announcements(status);
+create index if not exists idx_announcements_division_id
+  on public.announcements (division_id);
+create index if not exists idx_announcements_group_id
+  on public.announcements (group_id);
+create index if not exists idx_announcements_status
+  on public.announcements (status, published_at desc)
+  where status = 'published';
 create index if not exists idx_announcements_deleted_at on public.announcements(deleted_at);
 create index if not exists idx_announcements_status_deleted_at
   on public.announcements(status, deleted_at);
-create index if not exists idx_events_status on public.events(status);
+create index if not exists idx_announcements_search
+  on public.announcements
+  using gin (to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(description, '')));
+create index if not exists idx_events_status
+  on public.events (status, starts_at desc)
+  where status = 'published';
 create index if not exists idx_events_deleted_at on public.events(deleted_at);
+create index if not exists idx_events_search
+  on public.events
+  using gin (to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(description, '')));
 create index if not exists idx_home_carousel_slides_status_sort_order
   on public.home_carousel_slides(status, sort_order asc, created_at asc);
 create index if not exists idx_home_carousel_slides_deleted_at
@@ -181,6 +206,12 @@ create unique index if not exists idx_danger_news_settings_singleton
 
 create index if not exists idx_announcement_files_announcement_id
   on public.announcement_files(announcement_id);
+
+create index if not exists idx_announcement_category_links_category_id
+  on public.announcement_category_links(category_id);
+
+create index if not exists idx_event_category_links_category_id
+  on public.event_category_links(category_id);
 
 create index if not exists idx_event_people_event_id
   on public.event_people(event_id);
@@ -245,6 +276,92 @@ as $$
         ''
       ) = 'admin'
   );
+$$;
+
+create or replace function public.search_public_content(
+  search_query text,
+  filter_type text default null,
+  date_from date default null,
+  date_to date default null
+)
+returns table (
+  id uuid,
+  slug text,
+  type text,
+  title text,
+  excerpt text,
+  happened_at timestamptz,
+  badge text
+)
+language sql
+stable
+as $$
+  with announcement_results as (
+    select
+      a.id,
+      a.slug,
+      'announcement'::text as type,
+      a.title,
+      coalesce(a.description, '') as excerpt,
+      coalesce(a.published_at, now()) as happened_at,
+      coalesce(ac.name, 'عام') as badge
+    from public.announcements a
+    left join public.announcement_category_links acl on acl.announcement_id = a.id
+    left join public.announcement_categories ac on ac.id = acl.category_id
+    where a.status = 'published'
+      and a.deleted_at is null
+      and to_tsvector('simple', coalesce(a.title, '') || ' ' || coalesce(a.description, '')) @@ plainto_tsquery('simple', search_query)
+      and (filter_type is null or filter_type = 'announcement')
+      and (date_from is null or coalesce(a.published_at, now())::date >= date_from)
+      and (date_to is null or coalesce(a.published_at, now())::date <= date_to)
+  ),
+  event_results as (
+    select
+      e.id,
+      e.slug,
+      'event'::text as type,
+      e.title,
+      coalesce(e.description, '') as excerpt,
+      e.starts_at as happened_at,
+      coalesce(ec.name, 'عام') as badge
+    from public.events e
+    left join public.event_category_links ecl on ecl.event_id = e.id
+    left join public.event_categories ec on ec.id = ecl.category_id
+    where e.status = 'published'
+      and e.deleted_at is null
+      and to_tsvector('simple', coalesce(e.title, '') || ' ' || coalesce(e.description, '') || ' ' || coalesce(e.location, '')) @@ plainto_tsquery('simple', search_query)
+      and (filter_type is null or filter_type = 'event')
+      and (date_from is null or e.starts_at::date >= date_from)
+      and (date_to is null or e.starts_at::date <= date_to)
+  ),
+  news_results as (
+    select
+      bn.id,
+      bn.slug,
+      'breaking-news'::text as type,
+      bn.title,
+      bn.title as excerpt,
+      bn.created_at as happened_at,
+      case bn.level
+        when 'dangerous' then 'خطير'
+        when 'urgent' then 'عاجل'
+        else 'تحذير'
+      end as badge
+    from public.breaking_news bn
+    where bn.status = 'published'
+      and bn.deleted_at is null
+      and bn.expires_at > now()
+      and to_tsvector('simple', coalesce(bn.title, '')) @@ plainto_tsquery('simple', search_query)
+      and (filter_type is null or filter_type = 'breaking-news')
+      and (date_from is null or bn.created_at::date >= date_from)
+      and (date_to is null or bn.created_at::date <= date_to)
+  )
+  select * from announcement_results
+  union all
+  select * from event_results
+  union all
+  select * from news_results
+  order by happened_at desc;
 $$;
 
 -- ============================================
@@ -609,7 +726,7 @@ using (bucket_id = 'home-carousel' and public.is_admin());
 
 insert into public.divisions (name, slug)
 values
-  ('D�veloppement Digital', 'dev-digital'),
+  ('Developpement Digital', 'dev-digital'),
   ('Infrastructure Digitale', 'infra-digitale'),
   ('Gestion', 'gestion')
 on conflict (slug) do nothing;
@@ -633,28 +750,28 @@ select *
 from (
   values
     (
-      '?????? ?????? ??????',
-      '??? ???? ????? ?? ???????? ??????? ???????',
+      'مستقبل التحول الرقمي',
+      'نحو آفاق جديدة من الابتكار والتميز المؤسسي',
       'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1600',
-      '?????? ?????????',
+      'استكشف الفعاليات',
       'events',
       1,
       'published'
     ),
     (
-      '???? ??? ????',
-      '????? ?????? ??????? ?? ??????? ??????????? ????????',
+      'بيئة عمل ذكية',
+      'إطلاق الحزمة الجديدة من الخدمات الإلكترونية للموظفين',
       'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1600',
-      '???? ?????????',
+      'تصفح الإعلانات',
       'announcements',
       2,
       'published'
     ),
     (
-      '????? ??????? ??????',
-      '?????? ?????? ?????? ?????? ??????? ??? ??????',
+      'ملتقى الإبداع السنوي',
+      'شاركنا أفكارك لتطوير مستقبل مؤسستنا نحو الأفضل',
       'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=1600',
-      '??? ????',
+      'سجل الآن',
       'events',
       3,
       'published'
