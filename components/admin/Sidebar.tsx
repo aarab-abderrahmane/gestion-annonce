@@ -15,6 +15,7 @@ const iconMap: Record<AdminNavIconKey, typeof House> = {
   building: Building2,
   users: Users,
   settings: Settings,
+  palette: Images,
 };
 
 export default function Sidebar({

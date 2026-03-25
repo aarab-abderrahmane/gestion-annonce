@@ -10,6 +10,7 @@ export const ADMIN_RESOURCE_VALUES = [
   'events',
   'categories',
   'structure',
+  'canvas',
 ] as const;
 export type AdminResource = (typeof ADMIN_RESOURCE_VALUES)[number];
 
@@ -50,7 +51,8 @@ export type AdminNavIconKey =
   | 'folder'
   | 'building'
   | 'users'
-  | 'settings';
+  | 'settings'
+  | 'palette';
 
 export type AdminNavItem = {
   href: string;
@@ -75,6 +77,7 @@ export const ADMIN_RESOURCE_LABELS: Record<AdminResource, string> = {
   events: 'الفعاليات',
   categories: 'الأصناف',
   structure: 'الأقسام والمجموعات',
+  canvas: 'لوحة الإنشاء',
 };
 
 export const ADMIN_RESOURCE_DESCRIPTIONS: Record<AdminResource, string> = {
@@ -84,6 +87,7 @@ export const ADMIN_RESOURCE_DESCRIPTIONS: Record<AdminResource, string> = {
   events: 'إضافة الفعاليات والصور والمشاركين والأصناف.',
   categories: 'إدارة أصناف الإعلانات والفعاليات.',
   structure: 'إدارة الأقسام والمجموعات الدراسية.',
+  canvas: 'إنشاء جداول الحصص والتصاميم المرئية.',
 };
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
@@ -94,6 +98,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/dashboard/events', label: 'الفعاليات', icon: 'calendar', resource: 'events' },
   { href: '/dashboard/categories', label: 'الأصناف', icon: 'folder', resource: 'categories' },
   { href: '/dashboard/structure', label: 'الأقسام والمجموعات', icon: 'building', resource: 'structure' },
+  { href: '/canvas', label: 'لوحة الإنشاء', icon: 'palette', resource: 'canvas' },
   { href: '/dashboard/accounts', label: 'الحسابات المفوضة', icon: 'users', fullAdminOnly: true },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: 'settings', fullAdminOnly: true },
 ];
