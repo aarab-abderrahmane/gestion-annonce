@@ -66,12 +66,12 @@ export default function Header() {
                   >
                     <img
                       src="/images/ofppt-logo.jpeg"
-                      alt="ISTA Ait Melloul logo"
+                      alt="مؤسسة التطوير logo"
                       className="h-full w-full object-cover"
                     />
                   </span>
                 </span>
-              <span className="md-title-medium hidden sm:block">ISTA Ait Melloul</span>
+              <span className="md-title-medium hidden sm:block">مؤسسة التطوير</span>
             </Link>
           </div>
 
@@ -108,7 +108,7 @@ export default function Header() {
                     <Building2 size={18} />
                   </span>
                 </span>
-                <span className="md-title-medium">ISTA Ait Melloul</span>
+                <span className="md-title-medium">مؤسسة التطوير</span>
               </div>
               <button className="md-icon-btn" onClick={() => setIsDrawerOpen(false)} aria-label="إغلاق القائمة">
                 <X size={24} />

@@ -18,14 +18,14 @@ export default function Footer() {
                   >
                     <Image
                       src="/images/ofppt-logo.jpeg"
-                      alt="ISTA Ait Melloul logo"
+                      alt="مؤسسة التطوير logo"
                       fill
                       sizes="40px"
                       className="object-cover"
                     />
                   </span>
                 </span>
-            <h3 className="md-title-large">ISTA Ait Melloul</h3>
+            <h3 className="md-title-large">مؤسسة التطوير</h3>
           </div>
           <p className="md-body-medium" style={{ color: "var(--md-on-surface-variant)" }}>
             منصة الإعلانات الرسمية للمعهد المتخصص للتكنولوجيا التطبيقية بأيت ملول، لعرض المستجدات والتنبيهات والفعاليات في واجهة موحدة.
