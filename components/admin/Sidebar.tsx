@@ -61,12 +61,22 @@ export default function Sidebar({
           className="flex items-center gap-3 px-4 py-4 rounded-[var(--md-shape-xl)]"
           style={{ background: 'var(--md-secondary-container)' }}
         >
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-[var(--md-shape-l)] shrink-0"
-            style={{ background: 'var(--md-primary)', color: 'var(--md-on-primary)' }}
-          >
-            <Users size={20} />
-          </div>
+           <span
+                  className={'site-logo-ring'}
+                >
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full 
+                      site-logo-ring__inner
+                    `}
+                    style={{ background: 'var(--md-secondary-container)' }}
+                  >
+                    <img
+                      src="/images/ofppt-logo.jpeg"
+                      alt="ISTA Ait Melloul logo"
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                </span>
           <div className="min-w-0">
             <p
               className="md-label-small uppercase tracking-widest"
