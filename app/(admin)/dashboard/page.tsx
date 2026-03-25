@@ -133,7 +133,7 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1480px] space-y-6 2xl:max-w-[1520px]">
       <section
         className="relative overflow-hidden rounded-[calc(var(--md-shape-xl)+6px)] border p-6 sm:p-7"
         style={{

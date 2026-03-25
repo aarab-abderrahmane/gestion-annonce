@@ -43,6 +43,9 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, slides = 
 
   const latestAnnouncements = announcements.slice(0, 3);
   const breakingNews = newsItems.filter(n => new Date(n.expiryDate) > new Date()).slice(0, 3);
+  const dangerousNews = newsItems
+    .filter(n => new Date(n.expiryDate) > new Date() && n.riskLevel === 'high')
+    .slice(0, 5);
   const upcomingEvents = events.filter(e => e.isUpcoming).slice(0, 3);
 
   // ── Quick Search ────────────────────────────────────────────────
@@ -409,6 +412,71 @@ const Home: React.FC<HomeProps> = ({ announcements, newsItems, events, slides = 
       </div>
 
       {/* ── Main Grid ─────────────────────────────────────────────── */}
+      {dangerousNews.length > 0 && (
+        <section
+          className="overflow-hidden rounded-[24px] border"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--md-error) 32%, var(--md-outline-variant) 68%)',
+            background: 'linear-gradient(90deg, var(--md-error-container) 0%, color-mix(in srgb, var(--md-error-container) 78%, white 22%) 100%)',
+            boxShadow: '0px 6px 16px rgba(0,0,0,0.12)',
+          }}
+        >
+          <div className="flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:gap-5 md:px-6">
+            <div className="flex items-center gap-3 shrink-0">
+              <span
+                className="flex h-11 w-11 items-center justify-center rounded-full"
+                style={{ background: 'var(--md-error)', color: 'var(--md-on-error)' }}
+              >
+                <Info size={20} />
+              </span>
+              <div>
+                <p className="md-label-small uppercase tracking-widest" style={{ color: 'var(--md-on-error-container)', opacity: 0.78 }}>
+                  تنبيه خطير
+                </p>
+                <h2 className="md-title-medium" style={{ color: 'var(--md-on-error-container)' }}>
+                  شريط الأخبار العاجلة
+                </h2>
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1 overflow-hidden rounded-[var(--md-shape-full)] border px-4 py-3" style={{ borderColor: 'rgba(0,0,0,0.08)', background: 'rgba(255,255,255,0.38)' }}>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {dangerousNews.map((item, index) => (
+                  <React.Fragment key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('important-info')}
+                      className="min-w-0 text-right md-state"
+                      style={{ color: 'var(--md-on-error-container)', fontFamily: 'var(--md-font-brand)' }}
+                    >
+                      <span className="md-title-small">{item.title}</span>
+                    </button>
+                    {index < dangerousNews.length - 1 ? (
+                      <span className="text-sm" style={{ color: 'var(--md-on-error-container)', opacity: 0.45 }}>
+                        •
+                      </span>
+                    ) : null}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('important-info')}
+              className="md-btn md-state shrink-0"
+              style={{
+                background: 'var(--md-error)',
+                color: 'var(--md-on-error)',
+                borderRadius: 'var(--md-shape-full)',
+              }}
+            >
+              عرض التفاصيل
+            </button>
+          </div>
+        </section>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         {/* Left / Main column */}
