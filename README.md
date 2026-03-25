@@ -1,6 +1,6 @@
 # Gestionn Annonce App Documentation
 
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 ## 1. Purpose
 
@@ -26,7 +26,7 @@ Gestionn Annonce is a centralized communication platform for ISTA Ait Melloul.
 
 It provides:
 
-- a public website for announcements, urgent information, events, and search
+- a public website for announcements, urgent information, events, search, and an isolated homepage danger ticker
 - an admin dashboard for managing published content
 - a delegated account system so the main admin can create up to 4 staff accounts with scoped permissions
 
@@ -36,16 +36,17 @@ The platform is Arabic-first, RTL, and styled with a Material Design 3 inspired 
 
 ### Public portal
 
-- Home page with hero carousel, recent breaking news, announcements, and events
+- Home page with hero carousel, isolated danger ticker, recent announcements, and events
 - Announcements listing and announcement detail pages
 - Events listing and event detail pages
-- Important information page for breaking news
+- Important information page for breaking news archive
 - Search page with filters and full-text lookup
 
 ### Admin dashboard
 
 - Dashboard overview with summary metrics and recent content
-- Breaking news management
+- Danger ticker management with separate content items and banner design customization
+- Breaking news management for the important information archive
 - Home carousel management
 - Announcement management, including file attachments
 - Event management, including people and photo gallery
@@ -151,6 +152,7 @@ docs/                 Project documentation
 | Route | Access |
 | --- | --- |
 | `/dashboard` | Full admin only |
+| `/dashboard/danger-news` | Permission-based |
 | `/dashboard/breaking-news` | Permission-based |
 | `/dashboard/home-carousel` | Permission-based |
 | `/dashboard/announcements` | Permission-based |
@@ -164,12 +166,14 @@ Nested create flows currently exist under module routes such as:
 
 - `/dashboard/announcements/create`
 - `/dashboard/events/create`
+- `/dashboard/danger-news/create`
 - `/dashboard/breaking-news/create`
 
 ### API routes
 
 | Route | Purpose |
 | --- | --- |
+| `/api/danger-news` | CRUD support for isolated homepage danger ticker items |
 | `/api/breaking-news` | CRUD support for breaking news |
 | `/api/announcements` | CRUD support for announcements |
 | `/api/events` | CRUD support for events |
@@ -297,6 +301,7 @@ These users are real Supabase Auth users, but their app-level access is controll
 
 The current permission model supports these resources:
 
+- `danger_news`
 - `breaking_news`
 - `home_carousel`
 - `announcements`
@@ -357,6 +362,18 @@ The visible admin sidebar is generated from permissions rather than hardcoded pe
 - urgent notices
 - fields: `title`, `slug`, `level`, `status`, `created_at`, `expires_at`
 - `level` is one of: `dangerous`, `urgent`, `warning`
+
+#### `danger_news`
+
+- isolated homepage ticker items
+- separate from `breaking_news` and not used by `/important-info`
+- fields: `title`, `status`, `created_at`, `expires_at`, `deleted_at`, `deleted_by`
+
+#### `danger_news_settings`
+
+- singleton settings row for the homepage ticker
+- fields include `is_enabled`, `badge_label`, `title`, `speed_seconds`, `max_items`, `separator`
+- design fields include `icon_name`, `gradient_from_color`, `gradient_to_color`, `accent_color`, `text_color`
 
 #### `announcements`
 
@@ -571,6 +588,10 @@ The project currently expects:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+NEXT_PUBLIC_SITE_URL=
+SITE_URL=
+NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=
 ```
 
 ### Notes
@@ -578,6 +599,9 @@ SUPABASE_SERVICE_ROLE_KEY=
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: browser-safe public key
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only secret used for delegated account provisioning
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: required by the dashboard login page captcha
+- `NEXT_PUBLIC_SITE_URL` or `SITE_URL`: recommended so canonical URLs and metadata point to the real production domain
+- `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`: optional override for the announcements bucket name; defaults to `announcements`
 
 Never expose `SUPABASE_SERVICE_ROLE_KEY` in client code or any `NEXT_PUBLIC_*` variable.
 
@@ -587,8 +611,8 @@ Never expose `SUPABASE_SERVICE_ROLE_KEY` in client code or any `NEXT_PUBLIC_*` v
 
 1. Install dependencies
 2. Create `.env.local`
-3. Add the required Supabase variables
-4. Apply all Supabase migrations
+3. Add the required environment variables
+4. Apply all Supabase migrations in `supabase/migrations/`, or bootstrap a fresh project with `supabase/full-reset.sql`
 5. Run the development server
 
 ### Commands
@@ -619,10 +643,17 @@ The current codebase is well-suited for deployment on Vercel with Supabase as th
 ### Required production checks
 
 - verify all Supabase migrations have run
+- for a fresh database, `supabase/full-reset.sql` is the fastest bootstrap path
 - verify the admin user's metadata includes `role = admin`
 - verify `SUPABASE_SERVICE_ROLE_KEY` is present server-side
+- verify `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is configured in the app and Turnstile is configured in Supabase Auth
+- verify `NEXT_PUBLIC_SITE_URL` or `SITE_URL` matches the deployed domain
 - verify storage buckets and policies exist
+  - `announcements`
+  - `events`
+  - `home-carousel`
 - verify remote image hosts match actual storage URLs
+- verify `/dashboard/danger-news` and `/important-info` work independently, since the danger ticker is now isolated from breaking news
 
 ## 22. Current Strengths
 
@@ -635,10 +666,11 @@ The current codebase is well-suited for deployment on Vercel with Supabase as th
 
 ## 23. Current Limitations And Technical Debt
 
-- the repository `README.md` is still the default Next.js template and does not describe the real project
+- `README.md` and `docs/APP_DOCUMENTATION.md` now overlap heavily and can drift if one is updated without the other
 - some public routes still use `components/legacy/*`
 - rendering strategy is mixed, with some pages explicitly dynamic and others using ISR
 - there is no Cloudflare layer or edge-specific setup in the current repo
+- Next.js 16 warns that `middleware.ts` should migrate to the newer `proxy` convention
 - `/api/auth/[...nextauth]` is only a placeholder and may confuse future maintainers if left undocumented
 
 ## 24. Recommended Next Documentation Files
@@ -657,6 +689,7 @@ Gestionn Annonce is a focused institutional content platform built with a delibe
 - Next.js for application delivery
 - Supabase for auth, database, RPC, and storage
 - Postgres RLS for real authorization
+- a separate danger ticker system for homepage alerts
 - a scoped delegated-admin model for safe team workflows
 
 The codebase already supports the core workflows of a school communication platform, and its strongest architectural choice is that the permission model is enforced close to the data, not only in the UI.
