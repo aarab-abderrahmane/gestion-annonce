@@ -205,7 +205,15 @@ export default function AnnouncementsTable({
                         </span>
                       </td>
                       <td className="md-body-small px-6 py-4" style={{ color: 'var(--md-on-surface-variant)' }}>
-                        {row.publishedAt ? new Date(row.publishedAt).toLocaleString('ar-MA') : '—'}
+                        {row.publishedAt ? new Date(row.publishedAt).toLocaleString('ar-MA', {
+                          year: 'numeric',
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          timeZone: 'Africa/Casablanca'
+                        }) : '—'}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">

@@ -152,14 +152,15 @@ export default function TimetablePage() {
     if (!timetableRef.current) return;
     
     try {
+      // Wait a bit for any animations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const dataUrl = await toPng(timetableRef.current, {
         cacheBust: true,
-        pixelRatio: 2,
+        pixelRatio: 3,
         backgroundColor: '#ffffff',
-        filter: (node) => {
-          // Filter out any problematic nodes
-          return !node.classList?.contains('no-export');
-        },
+        width: timetableRef.current.scrollWidth,
+        height: timetableRef.current.scrollHeight,
       });
       
       const link = document.createElement('a');
@@ -168,7 +169,7 @@ export default function TimetablePage() {
       link.click();
     } catch (error) {
       console.error('Error generating image:', error);
-      alert('Erreur lors de la génération de l\'image');
+      alert('Erreur lors de la génération de l\'image. Veuillez réessayer.');
     }
   };
 
@@ -176,11 +177,14 @@ export default function TimetablePage() {
     if (!timetableRef.current) return;
     
     try {
-      const dataUrl = await toJpeg(timetableRef.current, {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const dataUrl = await toPng(timetableRef.current, {
         cacheBust: true,
-        quality: 0.95,
-        pixelRatio: 2,
+        pixelRatio: 3,
         backgroundColor: '#ffffff',
+        width: timetableRef.current.scrollWidth,
+        height: timetableRef.current.scrollHeight,
       });
       
       const img = new window.Image();
@@ -191,17 +195,35 @@ export default function TimetablePage() {
         img.onerror = reject;
       });
       
+      // Calculate dimensions to fit A4 landscape
+      const pdfWidth = 297; // A4 width in mm
+      const pdfHeight = 210; // A4 height in mm
+      const imgAspect = img.width / img.height;
+      const pdfAspect = pdfWidth / pdfHeight;
+      
+      let finalWidth, finalHeight;
+      if (imgAspect > pdfAspect) {
+        finalWidth = pdfWidth;
+        finalHeight = pdfWidth / imgAspect;
+      } else {
+        finalHeight = pdfHeight;
+        finalWidth = pdfHeight * imgAspect;
+      }
+      
       const pdf = new jsPDF({
         orientation: 'landscape',
-        unit: 'px',
-        format: [img.width, img.height],
+        unit: 'mm',
+        format: 'a4',
       });
       
-      pdf.addImage(dataUrl, 'JPEG', 0, 0, img.width, img.height);
+      const xOffset = (pdfWidth - finalWidth) / 2;
+      const yOffset = (pdfHeight - finalHeight) / 2;
+      
+      pdf.addImage(dataUrl, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
       pdf.save(`emploi-du-temps-${headerInfo.groupName}-${Date.now()}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Erreur lors de la génération du PDF');
+      alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
     }
   };
 
