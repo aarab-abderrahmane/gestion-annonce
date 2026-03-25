@@ -256,9 +256,9 @@ export default function TimetablePage() {
                     const slotKey = `${slot.start}-${slot.end}`;
                     const entry = scheduleData[day]?.[slotKey];
                     if (entry && entry.duration > 1) {
-                      // Mark the next slots as occupied (to the right in rendering)
-                      for (let i = 1; i < entry.duration; i++) {
-                        occupiedSlots.add(idx + i);
+                      // Mark the PREVIOUS slots as occupied (to the left, earlier times)
+                      for (let i = 1; i < entry.duration && (idx - i) >= 0; i++) {
+                        occupiedSlots.add(idx - i);
                       }
                     }
                   });
@@ -266,7 +266,7 @@ export default function TimetablePage() {
                   return (
                     <tr key={day} className="hover:bg-gray-50">
                       {reversedSlots.map((slot, idx) => {
-                        // Skip if this slot is occupied by a previous entry's colspan
+                        // Skip if this slot is occupied by a later entry's colspan
                         if (occupiedSlots.has(idx)) {
                           return null;
                         }
@@ -276,8 +276,8 @@ export default function TimetablePage() {
                         
                         let colspan = 1;
                         if (entry && entry.duration > 1) {
-                          // Calculate how many slots we can actually span
-                          colspan = Math.min(entry.duration, reversedSlots.length - idx);
+                          // Span backwards (to earlier times, lower indices)
+                          colspan = Math.min(entry.duration, idx + 1);
                         }
                         
                         return (
@@ -352,8 +352,6 @@ export default function TimetablePage() {
                 >
                   <option value={1}>1 séance (2.5h)</option>
                   <option value={2}>2 séances (5h)</option>
-                  <option value={3}>3 séances (7.5h)</option>
-                  <option value={4}>4 séances (10h)</option>
                 </select>
               </div>
             </div>
