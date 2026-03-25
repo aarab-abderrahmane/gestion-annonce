@@ -281,28 +281,28 @@ export default function TimetablePage() {
         {/* Timetable Container */}
         <div ref={timetableRef} data-timetable className="bg-white rounded-lg shadow-lg p-8">
           {/* Header Section */}
-          <div className="mb-6 border-b pb-6">
+          <div className="mb-8 border-b-2 pb-6">
             <div className="flex items-start justify-between mb-4">
               {/* Left: Group and Total */}
               <div className="text-left">
-                <p className="text-sm text-gray-600 mb-1">
-                  Groupe : <span className="font-bold text-gray-900">{headerInfo.groupName}</span>
+                <p className="text-lg text-gray-700 mb-2">
+                  Groupe : <span className="font-bold text-gray-900 text-xl">{headerInfo.groupName}</span>
                 </p>
-                <p className="text-sm text-gray-600">
-                  Total : <span className="font-bold text-blue-600">{calculateTotalHours()}H</span>
+                <p className="text-lg text-gray-700">
+                  Total : <span className="font-bold text-blue-600 text-xl">{calculateTotalHours()}H</span>
                 </p>
               </div>
 
               {/* Center: Title and Info */}
               <div className="flex-1 text-center px-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">
                   Emploi du temps par groupe
                 </h2>
-                <p className="text-lg font-semibold text-gray-800">{headerInfo.academicYear}</p>
-                <div className="mt-3 space-y-1">
-                  <p className="text-sm text-gray-600">{headerInfo.location}</p>
-                  <p className="text-sm font-semibold text-gray-700">{headerInfo.institution}</p>
-                  <p className="text-sm text-gray-700">
+                <p className="text-2xl font-semibold text-gray-800 mb-2">{headerInfo.academicYear}</p>
+                <div className="mt-4 space-y-2">
+                  <p className="text-base text-gray-600">{headerInfo.location}</p>
+                  <p className="text-base font-semibold text-gray-700">{headerInfo.institution}</p>
+                  <p className="text-base text-gray-700">
                     Filière : <span className="font-semibold">{headerInfo.filiere}</span>
                   </p>
                 </div>
@@ -310,12 +310,12 @@ export default function TimetablePage() {
 
               {/* Right: Logo */}
               <div className="flex items-center gap-3">
-                <div className="w-20 h-20 rounded-lg flex items-center justify-center">
+                <div className="w-24 h-24 rounded-lg flex items-center justify-center">
                   <Image 
                     src="/images/timetable_logo.png" 
                     alt="OFPPT" 
-                    width={80} 
-                    height={80}
+                    width={96} 
+                    height={96}
                     className="object-contain"
                   />
                 </div>
@@ -367,19 +367,19 @@ export default function TimetablePage() {
 
           {/* Timetable Grid - Days on RIGHT, Time slots REVERSED (18:30 to 08:30) */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-400">
+            <table className="w-full border-collapse border-2 border-gray-400">
               <thead>
                 <tr className="bg-gray-200">
                   {[...TIME_SLOTS].reverse().map((slot, idx) => (
-                    <th key={idx} className="border border-gray-400 p-2 text-center bg-gray-100">
-                      <div className="flex justify-between items-center text-xs font-semibold px-2">
+                    <th key={idx} className="border-2 border-gray-400 p-3 text-center bg-gray-100">
+                      <div className="flex justify-between items-center text-base font-semibold px-3">
                         <span>{slot.end}</span>
-                        <Clock className="w-3 h-3 text-gray-500" />
+                        <Clock className="w-4 h-4 text-gray-500" />
                         <span>{slot.start}</span>
                       </div>
                     </th>
                   ))}
-                  <th className="border border-gray-400 p-3 text-center font-bold text-sm bg-gray-200">
+                  <th className="border-2 border-gray-400 p-4 text-center font-bold text-lg bg-gray-200">
                     Jour \ Horaire
                   </th>
                 </tr>
@@ -422,21 +422,21 @@ export default function TimetablePage() {
                           <td
                             key={idx}
                             colSpan={colspan}
-                            className={`border border-gray-400 p-3 text-center min-h-[80px] ${
+                            className={`border-2 border-gray-400 p-4 text-center min-h-[100px] ${
                               isEditMode ? 'cursor-pointer hover:bg-blue-50' : ''
                             } ${entry ? 'bg-blue-50' : 'bg-white'}`}
                             onClick={() => handleCellClick(day, slotKey)}
                           >
                             {entry && (
-                              <div className="space-y-1">
-                                <div className="font-bold text-gray-900 text-sm">{entry.subject}</div>
-                                <div className="text-xs text-gray-600 italic">{entry.room}</div>
+                              <div className="space-y-2">
+                                <div className="font-bold text-gray-900 text-base">{entry.subject}</div>
+                                <div className="text-sm text-gray-600 italic">{entry.room}</div>
                               </div>
                             )}
                           </td>
                         );
                       })}
-                      <td className="border border-gray-400 p-3 font-semibold bg-gray-100 text-center text-sm">
+                      <td className="border-2 border-gray-400 p-4 font-semibold bg-gray-100 text-center text-base">
                         {day}
                       </td>
                     </tr>
@@ -446,7 +446,7 @@ export default function TimetablePage() {
             </table>
           </div>
 
-          <p className="text-xs text-gray-500 mt-4 text-center italic">
+          <p className="text-sm text-gray-500 mt-6 text-center italic">
             Version peut être modifiée selon l'avancement des groupes
           </p>
         </div>
