@@ -24,6 +24,49 @@ const TIME_SLOTS = [
   { start: '16:00', end: '18:30' },
 ];
 
+const FILIERES = [
+  'Bâtiment',
+  'Bâtiment option Métreur',
+  'Génie Civil option Bâtiments',
+  'Génie Civil option Travaux Publics',
+  'Génie Civil',
+  'Menuiserie',
+  'Menuiserie Aluminium',
+  'Menuiserie option Aluminium et Bois',
+  'Développement Digital',
+  'Développement Digital option Web Full Stack',
+  'Infrastructure Digitale',
+  'Infrastructure Digitale option Systèmes et Réseaux',
+  'Assistant Administratif',
+  'Assistant Administratif option Commerce',
+  'Assistant Administratif option Comptabilité',
+  'Gestion des Entreprises',
+  'Gestion des Entreprises option Comptabilité et Finance',
+  'Gestion des Entreprises option Commerce et Marketing',
+  'Gestion des Entreprises option Ressources Humaines',
+  'Electricité de Bâtiment',
+  'Electricité Industrielle',
+  'Génie électrique',
+  'Génie électrique option Electronique, Automatisme et Robotique',
+  'Génie électrique option Electromécanique des Systèmes Automatisés',
+  'Ouvrier Qualifié en électricité',
+  'Ouvrier Qualifié en électricité option Entretien Electrique',
+  'Ouvrier Qualifié en électricité option Electromécanique',
+  'Génie Mécanique',
+  'Génie Mécanique option Etudes et Méthodes en Fabrication Mécanique',
+  'Production mécanique',
+  'Production mécanique option Régleur en Fabrication Mécanique',
+  'Diagnostic et Electronique Embarquée Automobile',
+  'Electromécanique des engins motorisés',
+  'Electromécanique des engins motorisés option Automobile',
+  'Réparateur de Véhicules Automobiles',
+  'Technico-Commercial en Vente de Véhicules et Pièces de Rechange',
+  'Programme d\'Innovation Entrepreneuriale : de l\'idée au projet viable',
+  'Certification Microsoft Office Spécialiste en Excel',
+  'Certification Microsoft Office Specialist en Word',
+  'Management des parcs de loisirs',
+];
+
 export default function TimetablePage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isEditingHeader, setIsEditingHeader] = useState(false);
@@ -217,10 +260,17 @@ export default function TimetablePage() {
                     <label className="block text-sm font-medium mb-1">Filière</label>
                     <input
                       type="text"
+                      list="filieres-list"
                       value={headerInfo.filiere}
                       onChange={(e) => setHeaderInfo({ ...headerInfo, filiere: e.target.value })}
                       className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Sélectionner ou saisir une filière"
                     />
+                    <datalist id="filieres-list">
+                      {FILIERES.map((filiere) => (
+                        <option key={filiere} value={filiere} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
               </div>
