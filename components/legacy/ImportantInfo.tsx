@@ -178,10 +178,20 @@ const ImportantInfo: React.FC<ImportantInfoProps> = ({ newsItems }) => {
                   >
                     <span className="flex items-center gap-2">
                       <Clock size={16} />
-                      تاريخ النشر: {new Date(news.publishDate).toLocaleDateString('ar-SA')}
+                      تاريخ النشر: {new Date(news.publishDate).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        timeZone: 'Africa/Casablanca'
+                      })}
                     </span>
                     <span className="flex items-center gap-2">
-                      صالح حتى: {new Date(news.expiryDate).toLocaleDateString('ar-SA')}
+                      صالح حتى: {new Date(news.expiryDate).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        timeZone: 'Africa/Casablanca'
+                      })}
                     </span>
                   </div>
                 </div>

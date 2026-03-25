@@ -205,10 +205,24 @@ export default function DangerNewsTable({
                       </span>
                     </td>
                     <td className="md-body-small px-6 py-4" style={{ color: 'var(--md-on-surface-variant)' }}>
-                      {new Date(row.created_at).toLocaleString('ar-MA')}
+                      {new Date(row.created_at).toLocaleString('fr-FR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Africa/Casablanca'
+                      })}
                     </td>
                     <td className="md-body-small px-6 py-4" style={{ color: 'var(--md-on-surface-variant)' }}>
-                      {new Date(row.expires_at).toLocaleString('ar-MA')}
+                      {new Date(row.expires_at).toLocaleString('fr-FR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: 'Africa/Casablanca'
+                      })}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">

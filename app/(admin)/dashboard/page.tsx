@@ -444,7 +444,12 @@ export default async function DashboardPage() {
               key: 'published_at',
               header: 'تاريخ النشر',
               render: (row) =>
-                row.published_at ? new Date(row.published_at).toLocaleDateString('ar-MA') : '—',
+                row.published_at ? new Date(row.published_at).toLocaleDateString('fr-FR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  timeZone: 'Africa/Casablanca'
+                }) : '—',
             },
           ]}
         />
@@ -475,7 +480,12 @@ export default async function DashboardPage() {
               key: 'starts_at',
               header: 'تاريخ البدء',
               render: (row) =>
-                row.starts_at ? new Date(row.starts_at).toLocaleDateString('ar-MA') : '—',
+                row.starts_at ? new Date(row.starts_at).toLocaleDateString('fr-FR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  timeZone: 'Africa/Casablanca'
+                }) : '—',
             },
           ]}
         />

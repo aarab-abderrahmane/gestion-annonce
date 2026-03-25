@@ -609,7 +609,12 @@ const Home: React.FC<HomeProps> = ({
                             {news.description}
                           </p>
                           <p className="md-label-small mt-2" style={{ color: 'var(--md-on-surface-variant)' }}>
-                            {new Date(news.publishDate).toLocaleDateString('ar-SA')}
+                            {new Date(news.publishDate).toLocaleDateString('fr-FR', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              timeZone: 'Africa/Casablanca'
+                            })}
                           </p>
                         </div>
                       </div>
