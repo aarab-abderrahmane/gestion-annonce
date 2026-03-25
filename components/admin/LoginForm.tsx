@@ -2,16 +2,16 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useErrorToast } from '@/components/ui/useErrorToast';
 import { adminLoginSchema, getFirstZodError } from '@/lib/validations';
 
-const inputCls =
-  'w-full rounded-2xl border bg-[#fbfcfb] px-4 py-4 text-right text-[15px] outline-none transition-all placeholder:text-[#7d8886]';
-const inputStyle = {
-  borderColor: 'rgba(111, 121, 119, 0.22)',
-  color: 'var(--md-on-surface)',
-};
+const fieldClassName =
+  'group rounded-[28px] border px-4 py-3 transition-all duration-200 focus-within:-translate-y-0.5 focus-within:shadow-[0_12px_30px_rgba(0,106,96,0.12)]';
+
+const inputClassName =
+  'w-full border-0 bg-transparent px-0 py-1 text-right text-[15px] outline-none placeholder:text-[var(--md-outline)]';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -19,27 +19,37 @@ export default function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useErrorToast(error);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
+
     const validation = adminLoginSchema.safeParse({
       email,
       password,
     });
+
     if (!validation.success) {
       setError(getFirstZodError(validation.error));
       return;
     }
 
     setLoading(true);
+
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword(validation.data);
-    if (error) { setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.'); setLoading(false); return; }
+
+    if (error) {
+      setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+      setLoading(false);
+      return;
+    }
 
     const { data: canAccessDashboard, error: accessError } = await supabase.rpc('has_dashboard_access');
+
     if (accessError || !canAccessDashboard) {
       await supabase.auth.signOut();
       setError('هذا الحساب لا يملك صلاحية الدخول إلى لوحة الإدارة.');
@@ -47,89 +57,102 @@ export default function LoginForm() {
       return;
     }
 
-    router.push('/dashboard'); router.refresh();
+    router.push('/dashboard');
+    router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5" dir="rtl">
-      <div className="space-y-2.5">
-        <label className="block text-sm font-semibold" style={{ color: 'var(--md-on-surface)' }}>
-          البريد الإلكتروني
+    <form onSubmit={handleSubmit} className="space-y-4" dir="rtl">
+      <div
+        className={fieldClassName}
+        style={{
+          background: 'var(--md-surface-container-lowest)',
+          borderColor: 'var(--md-outline-variant)',
+        }}
+      >
+        <label className="mb-1 flex items-center justify-between gap-3 text-[13px] font-semibold" style={{ color: 'var(--md-on-surface-variant)' }}>
+          <span>البريد الإلكتروني</span>
+          <Mail size={16} style={{ color: 'var(--md-primary)' }} />
         </label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={inputCls}
-          style={inputStyle}
-          placeholder="أدخل البريد الإلكتروني"
+          className={inputClassName}
+          placeholder="admin@example.com"
           autoComplete="email"
-          onFocus={(e) => {
-            e.target.style.borderColor = 'var(--md-primary)';
-            e.target.style.background = '#ffffff';
-            e.target.style.boxShadow = '0 0 0 4px rgba(0, 106, 96, 0.08)';
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = 'rgba(111, 121, 119, 0.22)';
-            e.target.style.background = '#fbfcfb';
-            e.target.style.boxShadow = 'none';
-          }}
           required
         />
       </div>
 
-      <div className="space-y-2.5">
-        <label className="block text-sm font-semibold" style={{ color: 'var(--md-on-surface)' }}>
-          كلمة المرور
+      <div
+        className={fieldClassName}
+        style={{
+          background: 'var(--md-surface-container-lowest)',
+          borderColor: 'var(--md-outline-variant)',
+        }}
+      >
+        <label className="mb-1 flex items-center justify-between gap-3 text-[13px] font-semibold" style={{ color: 'var(--md-on-surface-variant)' }}>
+          <span>كلمة المرور</span>
+          <LockKeyhole size={16} style={{ color: 'var(--md-primary)' }} />
         </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputCls}
-          style={inputStyle}
-          placeholder="أدخل كلمة المرور"
-          autoComplete="current-password"
-          onFocus={(e) => {
-            e.target.style.borderColor = 'var(--md-primary)';
-            e.target.style.background = '#ffffff';
-            e.target.style.boxShadow = '0 0 0 4px rgba(0, 106, 96, 0.08)';
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = 'rgba(111, 121, 119, 0.22)';
-            e.target.style.background = '#fbfcfb';
-            e.target.style.boxShadow = 'none';
-          }}
-          required
-        />
-        <p className="text-[13px]" style={{ color: 'var(--md-outline)' }}>
-          يرجى التأكد من إدخال بيانات الحساب الإداري بشكل صحيح.
-        </p>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowPassword((current) => !current)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors"
+            style={{ color: 'var(--md-on-surface-variant)' }}
+            aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={inputClassName}
+            placeholder="أدخل كلمة المرور"
+            autoComplete="current-password"
+            required
+          />
+        </div>
       </div>
 
-      {error && (
+      <div
+        className="rounded-[24px] border px-4 py-3 text-[13px] leading-6"
+        style={{
+          background: 'rgba(0, 106, 96, 0.05)',
+          borderColor: 'rgba(0, 106, 96, 0.12)',
+          color: 'var(--md-on-surface-variant)',
+        }}
+      >
+        تأكد من استعمال بيانات الحساب الإداري المعتمدة. الحسابات المفوضة ستظهر لها فقط الأقسام المسموح بها.
+      </div>
+
+      {error ? (
         <div
-          className="rounded-2xl border px-4 py-3 text-sm leading-6"
+          className="rounded-[24px] border px-4 py-3 text-sm leading-6"
           style={{
             background: 'var(--md-error-container)',
             color: 'var(--md-on-error-container)',
-            borderColor: 'rgba(186, 26, 26, 0.14)',
+            borderColor: 'rgba(186, 26, 26, 0.16)',
           }}
         >
           {error}
         </div>
-      )}
+      ) : null}
 
       <button
         type="submit"
         disabled={loading}
-        className="mt-2 flex h-14 w-full items-center justify-center rounded-2xl text-[15px] font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+        className="md-btn md-btn-filled md-btn-lg mt-2 flex w-full items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-60"
         style={{
-          background: 'linear-gradient(135deg, #0f5f76, #0b7b6f)',
-          boxShadow: '0 18px 32px rgba(15, 95, 118, 0.20)',
+          boxShadow: '0 18px 36px rgba(0, 106, 96, 0.22)',
         }}
       >
-        {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+        {loading ? 'جاري تسجيل الدخول...' : 'الدخول إلى لوحة الإدارة'}
       </button>
     </form>
   );
