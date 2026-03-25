@@ -259,7 +259,7 @@ export default function HomeCarouselManager({
     try {
       const parsed = validation.data;
       const previousRow = rows.find((row) => row.id === selectedId) ?? null;
-      let imageUrl = parsed.image_url.trim();
+      let imageUrl = parsed.image_url?.trim() ?? '';
 
       if (imageFile) {
         imageUrl = await uploadImage(imageFile);
