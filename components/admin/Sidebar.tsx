@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Settings, Users, X } from 'lucide-react';
+import { AlertTriangle, BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Settings, Trash2, Users, X } from 'lucide-react';
 import type { AdminNavIconKey, AdminNavItem } from '@/lib/admin-permissions';
 
 const iconMap: Record<AdminNavIconKey, typeof House> = {
@@ -13,6 +13,7 @@ const iconMap: Record<AdminNavIconKey, typeof House> = {
   images: Images,
   newspaper: Newspaper,
   calendar: CalendarDays,
+  trash: Trash2,
   folder: FolderTree,
   building: Building2,
   users: Users,

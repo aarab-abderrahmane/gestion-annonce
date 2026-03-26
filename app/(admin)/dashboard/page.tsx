@@ -12,6 +12,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Users,
 } from 'lucide-react';
 import DataTable from '@/components/admin/DataTable';
@@ -152,6 +153,15 @@ export default async function DashboardPage() {
       icon: Images,
       accent: 'var(--md-secondary-container)',
       tone: 'var(--md-on-secondary-container)',
+      isContentModule: true,
+    },
+    {
+      href: '/dashboard/trash',
+      label: 'سلة المهملات',
+      description: 'استعرض كل العناصر المحذوفة ونفذ الاسترجاع أو الحذف النهائي جماعيا.',
+      icon: Trash2,
+      accent: 'color-mix(in srgb, var(--md-error-container) 72%, white 28%)',
+      tone: 'var(--md-on-error-container)',
       isContentModule: true,
     },
     {

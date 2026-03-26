@@ -49,6 +49,7 @@ export type AdminNavIconKey =
   | 'images'
   | 'newspaper'
   | 'calendar'
+  | 'trash'
   | 'folder'
   | 'building'
   | 'users'
@@ -97,6 +98,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/dashboard/home-carousel', label: 'كاروسيل الرئيسية', icon: 'images', resource: 'home_carousel' },
   { href: '/dashboard/announcements', label: 'الإعلانات', icon: 'newspaper', resource: 'announcements' },
   { href: '/dashboard/events', label: 'الفعاليات', icon: 'calendar', resource: 'events' },
+  { href: '/dashboard/trash', label: 'سلة المهملات', icon: 'trash', fullAdminOnly: true },
   { href: '/dashboard/categories', label: 'الأصناف', icon: 'folder', resource: 'categories' },
   { href: '/dashboard/structure', label: 'الأقسام والمجموعات', icon: 'building', resource: 'structure' },
   { href: '/dashboard/accounts', label: 'الحسابات المفوضة', icon: 'users', fullAdminOnly: true },
