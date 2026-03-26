@@ -47,6 +47,21 @@ type DialogState =
       row: Row;
     };
 
+type SlideResponse = {
+  error?: string;
+  slide?: Row;
+};
+
+type SlidesResponse = {
+  error?: string;
+  slides?: Row[];
+};
+
+type SuccessResponse = {
+  error?: string;
+  success?: boolean;
+};
+
 const targetOptions: Array<{ value: HomeCarouselTarget; label: string }> = [
   { value: 'events', label: 'الفعاليات' },
   { value: 'announcements', label: 'الإعلانات' },
@@ -72,7 +87,7 @@ function getNextSortOrder(rows: Row[]) {
   return rows.reduce((maxOrder, row) => Math.max(maxOrder, row.sort_order), 0) + 1;
 }
 
-function createEmptyValues(nextSortOrder: number): FormValues {
+function createEmptyValues(nextSortOrder: number, status: ContentStatus = 'draft'): FormValues {
   return {
     title: '',
     subtitle: '',
@@ -80,7 +95,7 @@ function createEmptyValues(nextSortOrder: number): FormValues {
     cta_label: '',
     target: 'events',
     sort_order: String(nextSortOrder),
-    status: 'draft',
+    status,
   };
 }
 
@@ -107,6 +122,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+async function parseMutationResponse<T extends { error?: string }>(response: Response) {
+  return (await response.json().catch(() => null)) as T | null;
+}
+
 export default function HomeCarouselManager({
   initialRows,
   permissions,
@@ -117,9 +136,19 @@ export default function HomeCarouselManager({
   const router = useRouter();
   const supabase = createClient();
   const toast = useToast();
+  const canCreate = permissions.create;
+  const canUpdate = permissions.update;
+  const canDelete = permissions.delete;
+  const canPublish = permissions.publish;
+  const defaultNewSlideStatus: ContentStatus = canPublish ? 'published' : 'draft';
   const [rows, setRows] = useState<Row[]>(() => sortRows(initialRows));
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [values, setValues] = useState<FormValues>(() => createEmptyValues(getNextSortOrder(sortRows(initialRows).filter((row) => !row.deleted_at))));
+  const [values, setValues] = useState<FormValues>(() =>
+    createEmptyValues(
+      getNextSortOrder(sortRows(initialRows).filter((row) => !row.deleted_at)),
+      defaultNewSlideStatus,
+    ),
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [saving, setSaving] = useState(false);
@@ -152,17 +181,13 @@ export default function HomeCarouselManager({
     [rows, viewFilter],
   );
   const publishedCount = useMemo(() => activeRows.filter((row) => row.status === 'published').length, [activeRows]);
-  const canCreate = permissions.create;
-  const canUpdate = permissions.update;
-  const canDelete = permissions.delete;
-  const canPublish = permissions.publish;
   const readOnly = !canCreate && !canUpdate;
   const formLocked = selectedId ? !canUpdate : !canCreate;
   const previewUrl = imagePreviewUrl || values.image_url.trim();
 
   function startCreate(nextSortOrder = getNextSortOrder(activeRows)) {
     setSelectedId(null);
-    setValues(createEmptyValues(nextSortOrder));
+    setValues(createEmptyValues(nextSortOrder, defaultNewSlideStatus));
     setImageFile(null);
     setError('');
   }
@@ -280,35 +305,44 @@ export default function HomeCarouselManager({
       };
 
       if (selectedId) {
-        const { error: updateError } = await supabase.from('home_carousel_slides').update(payload).eq('id', selectedId);
-        if (updateError) throw new Error(updateError.message);
+        const response = await fetch(`/api/home-carousel/${selectedId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        const result = await parseMutationResponse<SlideResponse>(response);
 
-        const updatedRow: Row = {
-          ...payload,
-          id: selectedId,
-          created_at: previousRow?.created_at ?? new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: previousRow?.deleted_at ?? null,
-        };
+        if (!response.ok || !result?.slide) {
+          throw new Error(result?.error ?? 'تعذر تحديث الشريحة.');
+        }
+
+        const updatedRow = result.slide;
         const nextRows = sortRows(rows.map((row) => (row.id === selectedId ? updatedRow : row)));
         setRows(nextRows);
         startEdit(updatedRow);
 
-        if (imageFile && previousRow && previousRow.image_url !== imageUrl) {
+        if (imageFile && previousRow && previousRow.image_url !== updatedRow.image_url) {
           void removeStoredImage(previousRow.image_url);
         }
 
         toast.success('تم تحديث الشريحة بنجاح.');
       } else {
-        const { data, error: insertError } = await supabase
-          .from('home_carousel_slides')
-          .insert({ ...payload, deleted_at: null, deleted_by: null })
-          .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at, deleted_at')
-          .single();
+        const response = await fetch('/api/home-carousel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        const result = await parseMutationResponse<SlideResponse>(response);
 
-        if (insertError || !data) throw new Error(insertError?.message ?? 'تعذر إنشاء الشريحة.');
+        if (!response.ok || !result?.slide) {
+          throw new Error(result?.error ?? 'تعذر إنشاء الشريحة.');
+        }
 
-        const nextRows = sortRows([...rows, data as Row]);
+        const nextRows = sortRows([...rows, result.slide]);
         setRows(nextRows);
         startCreate(getNextSortOrder(nextRows.filter((row) => !row.deleted_at)));
         toast.success('تمت إضافة الشريحة بنجاح.');
@@ -331,17 +365,17 @@ export default function HomeCarouselManager({
     setError('');
 
     try {
-      const deletedAt = new Date().toISOString();
-      const { data: authData } = await supabase.auth.getUser();
-      const { error: deleteError } = await supabase
-        .from('home_carousel_slides')
-        .update({ deleted_at: deletedAt, deleted_by: authData.user?.id ?? null })
-        .eq('id', row.id)
-        .is('deleted_at', null);
+      const response = await fetch(`/api/home-carousel/${row.id}`, {
+        method: 'DELETE',
+      });
+      const result = await parseMutationResponse<SlideResponse>(response);
 
-      if (deleteError) throw new Error(deleteError.message);
+      if (!response.ok || !result?.slide) {
+        throw new Error(result?.error ?? 'تعذر نقل الشريحة إلى المهملات.');
+      }
 
-      const nextRows = sortRows(rows.map((item) => (item.id === row.id ? { ...item, deleted_at: deletedAt } : item)));
+      const trashedRow = result.slide;
+      const nextRows = sortRows(rows.map((item) => (item.id === row.id ? trashedRow : item)));
       setRows(nextRows);
       if (selectedId === row.id) startCreate(getNextSortOrder(nextRows.filter((item) => !item.deleted_at)));
       toast.success('تم نقل الشريحة إلى سلة المهملات.');
@@ -358,14 +392,21 @@ export default function HomeCarouselManager({
     setError('');
 
     try {
-      const { error: restoreError } = await supabase
-        .from('home_carousel_slides')
-        .update({ deleted_at: null, deleted_by: null })
-        .eq('id', row.id);
+      const response = await fetch(`/api/home-carousel/${row.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+      const result = await parseMutationResponse<SlideResponse>(response);
 
-      if (restoreError) throw new Error(restoreError.message);
+      if (!response.ok || !result?.slide) {
+        throw new Error(result?.error ?? 'تعذر استرجاع الشريحة.');
+      }
 
-      setRows(sortRows(rows.map((item) => (item.id === row.id ? { ...item, deleted_at: null } : item))));
+      const restoredRow = result.slide;
+      setRows(sortRows(rows.map((item) => (item.id === row.id ? restoredRow : item))));
       toast.success('تم استرجاع الشريحة بنجاح.');
       router.refresh();
     } catch (restoreError) {
@@ -384,13 +425,14 @@ export default function HomeCarouselManager({
     setError('');
 
     try {
-      const { error: deleteError } = await supabase
-        .from('home_carousel_slides')
-        .delete()
-        .eq('id', row.id)
-        .not('deleted_at', 'is', null);
+      const response = await fetch(`/api/home-carousel/${row.id}?purge=true`, {
+        method: 'DELETE',
+      });
+      const result = await parseMutationResponse<SuccessResponse>(response);
 
-      if (deleteError) throw new Error(deleteError.message);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error ?? 'تعذر حذف الشريحة نهائيا.');
+      }
 
       const nextRows = sortRows(rows.filter((item) => item.id !== row.id));
       setRows(nextRows);
@@ -428,21 +470,23 @@ export default function HomeCarouselManager({
         cta_label: slide.ctaLabel,
         target: slide.target,
         sort_order: slide.sortOrder,
-        status: slide.status,
-        deleted_at: null,
-        deleted_by: null,
+        status: canPublish ? slide.status : 'draft',
       }));
 
-      const { data, error: insertError } = await supabase
-        .from('home_carousel_slides')
-        .insert(payload)
-        .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at, deleted_at')
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true });
+      const response = await fetch('/api/home-carousel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ slides: payload }),
+      });
+      const result = await parseMutationResponse<SlidesResponse>(response);
 
-      if (insertError) throw new Error(insertError.message);
+      if (!response.ok || !result?.slides) {
+        throw new Error(result?.error ?? 'تعذر إضافة الشرائح الافتراضية.');
+      }
 
-      const nextRows = sortRows((data ?? []) as Row[]);
+      const nextRows = sortRows(result.slides);
       setRows(nextRows);
       if (nextRows[0]) startEdit(nextRows[0]);
       toast.success('تمت إضافة الشرائح الافتراضية.');
@@ -697,10 +741,15 @@ export default function HomeCarouselManager({
                 <input type="number" min={1} value={values.sort_order} onChange={(event) => setField('sort_order', event.target.value)} className={inputCls} style={inputStyle} disabled={formLocked} required />
               </Field>
               <Field label="الحالة">
-                <select value={values.status} onChange={(event) => setField('status', event.target.value as ContentStatus)} className={inputCls} style={inputStyle} disabled={formLocked}>
-                  <option value="draft">مسودة</option>
-                  {canPublish ? <option value="published">منشور</option> : null}
-                </select>
+                <div className="space-y-2">
+                  <select value={values.status} onChange={(event) => setField('status', event.target.value as ContentStatus)} className={inputCls} style={inputStyle} disabled={formLocked}>
+                    <option value="draft">مسودة</option>
+                    {canPublish ? <option value="published">منشور</option> : null}
+                  </select>
+                  <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+                    الصفحة الرئيسية تعرض فقط الشرائح المنشورة.
+                  </p>
+                </div>
               </Field>
             </div>
           </div>

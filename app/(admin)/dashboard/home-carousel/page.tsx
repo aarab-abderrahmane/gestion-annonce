@@ -2,6 +2,7 @@ import ErrorToastTrigger from '@/components/ui/ErrorToastTrigger';
 import HomeCarouselManager, { type HomeCarouselAdminRow } from '@/components/admin/HomeCarouselManager';
 import { requireAdminPageAccess } from '@/lib/admin-access';
 import { collectErrorMessages } from '@/lib/errors';
+import { HOME_CAROUSEL_ADMIN_ROW_SELECT } from '@/lib/home-carousel';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function HomeCarouselAdminPage() {
@@ -9,7 +10,7 @@ export default async function HomeCarouselAdminPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('home_carousel_slides')
-    .select('id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at')
+    .select(HOME_CAROUSEL_ADMIN_ROW_SELECT)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 

@@ -13,6 +13,11 @@ type HomeCarouselSlideRow = {
   updated_at: string;
 };
 
+export const HOME_CAROUSEL_ROW_SELECT =
+  'id, title, subtitle, image_url, cta_label, target, sort_order, status, created_at, updated_at';
+
+export const HOME_CAROUSEL_ADMIN_ROW_SELECT = `${HOME_CAROUSEL_ROW_SELECT}, deleted_at`;
+
 export type DefaultHomeCarouselSlideInput = {
   title: string;
   subtitle: string;
