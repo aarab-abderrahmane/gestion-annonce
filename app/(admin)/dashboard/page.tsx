@@ -6,19 +6,20 @@ import {
   BellRing,
   Building2,
   CalendarDays,
-  FolderTree,
-  Images,
   Newspaper,
   Settings,
   ShieldCheck,
   Sparkles,
-  Trash2,
-  Users,
 } from 'lucide-react';
 import DataTable from '@/components/admin/DataTable';
+import QuickControlsSection, { type QuickActionItem } from '@/components/admin/QuickControlsSection';
 import StatsCard from '@/components/admin/StatsCard';
 import { requireDashboardAccess } from '@/lib/admin-access';
 import { createClient } from '@/lib/supabase/server';
+
+type DashboardQuickAction = QuickActionItem & {
+  isContentModule: boolean;
+};
 
 export default async function DashboardPage() {
   const access = await requireDashboardAccess();
@@ -114,7 +115,7 @@ export default async function DashboardPage() {
       href: '/dashboard/breaking-news',
       label: 'الأخبار العاجلة',
       description: 'أنشئ إشعارًا سريعًا أو راجع التنبيهات النشطة.',
-      icon: BellRing,
+      icon: 'bell',
       accent: 'var(--md-error-container)',
       tone: 'var(--md-on-error-container)',
       isContentModule: true,
@@ -123,7 +124,7 @@ export default async function DashboardPage() {
       href: '/dashboard/danger-news',
       label: 'الشريط الخطير',
       description: 'أدر عناصر الشريط الخطير واضبط سرعته والعناصر الظاهرة فيه.',
-      icon: AlertTriangle,
+      icon: 'alert',
       accent: 'color-mix(in srgb, var(--md-error-container) 82%, white 18%)',
       tone: 'var(--md-on-error-container)',
       isContentModule: true,
@@ -132,7 +133,7 @@ export default async function DashboardPage() {
       href: '/dashboard/announcements',
       label: 'الإعلانات',
       description: 'تابع المسودات والمنشورات والمهملات من مكان واحد.',
-      icon: Newspaper,
+      icon: 'newspaper',
       accent: 'var(--md-primary-container)',
       tone: 'var(--md-on-primary-container)',
       isContentModule: true,
@@ -141,7 +142,7 @@ export default async function DashboardPage() {
       href: '/dashboard/events',
       label: 'الفعاليات',
       description: 'أدِر الجدولة والصور والموقع وحالة النشر.',
-      icon: CalendarDays,
+      icon: 'calendar',
       accent: 'var(--md-tertiary-container)',
       tone: 'var(--md-on-tertiary-container)',
       isContentModule: true,
@@ -150,7 +151,7 @@ export default async function DashboardPage() {
       href: '/dashboard/home-carousel',
       label: 'كاروسيل الرئيسية',
       description: 'خصص الشرائح البارزة المعروضة في الصفحة الأولى.',
-      icon: Images,
+      icon: 'images',
       accent: 'var(--md-secondary-container)',
       tone: 'var(--md-on-secondary-container)',
       isContentModule: true,
@@ -159,7 +160,7 @@ export default async function DashboardPage() {
       href: '/dashboard/trash',
       label: 'سلة المهملات',
       description: 'استعرض كل العناصر المحذوفة ونفذ الاسترجاع أو الحذف النهائي جماعيا.',
-      icon: Trash2,
+      icon: 'trash',
       accent: 'color-mix(in srgb, var(--md-error-container) 72%, white 28%)',
       tone: 'var(--md-on-error-container)',
       isContentModule: true,
@@ -168,7 +169,7 @@ export default async function DashboardPage() {
       href: '/dashboard/structure',
       label: 'الأقسام والمجموعات',
       description: 'اضبط بنية العرض والتصنيف داخل المنصة.',
-      icon: FolderTree,
+      icon: 'folder',
       accent: 'var(--md-surface-container-highest)',
       tone: 'var(--md-on-surface)',
       isContentModule: false,
@@ -177,12 +178,12 @@ export default async function DashboardPage() {
       href: '/dashboard/accounts',
       label: 'الحسابات المفوضة',
       description: 'راجع الصلاحيات والحسابات الإدارية المساندة.',
-      icon: Users,
+      icon: 'users',
       accent: 'var(--md-surface-container-highest)',
       tone: 'var(--md-on-surface)',
       isContentModule: false,
     },
-  ];
+  ] satisfies DashboardQuickAction[];
   const contentModuleCount = quickActions.filter((item) => item.isContentModule).length;
 
   return (
@@ -299,64 +300,9 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
-        <section className="md-card-outlined overflow-hidden">
-          <div
-            className="flex items-center justify-between px-6 py-5"
-            style={{
-              borderBottom: '1px solid var(--md-outline-variant)',
-              background: 'linear-gradient(180deg, var(--md-surface-container-low) 0%, var(--md-surface) 100%)',
-            }}
-          >
-            <div className="space-y-1">
-              <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-                وحدات التحكم السريع
-              </h2>
-              <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                انتقل مباشرة إلى أكثر أقسام لوحة التحكم استخدامًا.
-              </p>
-            </div>
-            <Link href="/dashboard/settings" className="md-btn md-btn-outlined md-state" style={{ height: 36, padding: '0 16px', fontSize: 13 }}>
-              الإعدادات
-            </Link>
-          </div>
-
-          <div className="grid gap-4 p-5 md:grid-cols-2">
-            {quickActions.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="group rounded-[var(--md-shape-xl)] border p-4 transition-all hover:-translate-y-0.5"
-                  style={{
-                    borderColor: 'var(--md-outline-variant)',
-                    background: 'var(--md-surface-container-low)',
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div
-                      className="flex h-11 w-11 items-center justify-center rounded-[var(--md-shape-l)]"
-                      style={{ background: item.accent }}
-                    >
-                      <Icon size={20} style={{ color: item.tone }} />
-                    </div>
-                    <ArrowUpRight size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    <h3 className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>
-                      {item.label}
-                    </h3>
-                    <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                      {item.description}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <QuickControlsSection
+          items={quickActions.map(({ isContentModule: _isContentModule, ...item }) => item)}
+        />
 
         <section className="space-y-4">
           <div className="md-card-outlined p-5">
