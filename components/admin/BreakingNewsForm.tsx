@@ -3,8 +3,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useErrorToast } from '@/components/ui/useErrorToast';
+import {
+  BREAKING_NEWS_EDITORIAL_STATUS_LABELS,
+  type BreakingNewsEditorialStatus,
+} from '@/lib/breaking-news-workflow';
 import {
   breakingNewsSchema,
   getFirstZodError,
@@ -15,6 +18,8 @@ type FormValues = {
   slug: string;
   level: 'dangerous' | 'urgent' | 'warning';
   status: 'draft' | 'published';
+  editorial_status: BreakingNewsEditorialStatus;
+  review_notes: string;
   expires_at: string;
 };
 
@@ -26,10 +31,13 @@ type BreakingNewsFormProps = {
 };
 
 function slugify(value: string) {
-  return value.trim().toLowerCase().normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}\s-]/gu, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -46,7 +54,6 @@ const inputStyle = { background: 'var(--md-surface-container-lowest)', borderCol
 
 export default function BreakingNewsForm({ mode, initialValues, canPublish, id }: BreakingNewsFormProps) {
   const router = useRouter();
-  const supabase = createClient();
   const [values, setValues] = useState<FormValues>(initialValues);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -68,6 +75,8 @@ export default function BreakingNewsForm({ mode, initialValues, canPublish, id }
       slug,
       level: values.level,
       status: values.status,
+      editorial_status: values.editorial_status,
+      review_notes: values.review_notes,
       expires_at: values.expires_at,
     });
 
@@ -83,16 +92,48 @@ export default function BreakingNewsForm({ mode, initialValues, canPublish, id }
       slug,
       level: parsed.level,
       status: parsed.status,
+      editorial_status: parsed.editorial_status,
+      review_notes: parsed.review_notes || null,
       expires_at: new Date(parsed.expires_at).toISOString(),
     };
-    const query = mode === 'create'
-      ? supabase.from('breaking_news').insert(payload)
-      : supabase.from('breaking_news').update(payload).eq('id', id);
-    const { error: queryError } = await query;
-    if (queryError) { setError(queryError.message); setSaving(false); return; }
-    router.push('/dashboard/breaking-news');
-    router.refresh();
+    try {
+      const response = await fetch(
+        mode === 'create' ? '/api/breaking-news' : `/api/breaking-news/${id}`,
+        {
+          method: mode === 'create' ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      );
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      if (!response.ok) {
+        setError(result?.error ?? 'تعذر حفظ الخبر حالياً.');
+        setSaving(false);
+        return;
+      }
+
+      router.push('/dashboard/breaking-news');
+      router.refresh();
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'تعذر حفظ الخبر حالياً.',
+      );
+      setSaving(false);
+    }
   }
+
+  const editorialOptions = canPublish
+    ? ([
+        'draft',
+        'in_review',
+        'changes_requested',
+        'approved',
+      ] as const)
+    : (['draft', 'in_review'] as const);
 
   return (
     <form onSubmit={handleSubmit} className="md-card-outlined p-6 space-y-5">
@@ -154,6 +195,29 @@ export default function BreakingNewsForm({ mode, initialValues, canPublish, id }
           </select>
         </Field>
 
+        <Field label="مسار التحرير">
+          <select
+            id="editorial_status"
+            value={values.editorial_status}
+            onChange={(e) =>
+              setField(
+                'editorial_status',
+                e.target.value as FormValues['editorial_status'],
+              )
+            }
+            className={inputCls}
+            style={inputStyle}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+            onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
+          >
+            {editorialOptions.map((option) => (
+              <option key={option} value={option}>
+                {BREAKING_NEWS_EDITORIAL_STATUS_LABELS[option]}
+              </option>
+            ))}
+          </select>
+        </Field>
+
         {/* Expires at */}
         <div className="md:col-span-2">
           <Field label="تاريخ الانتهاء">
@@ -167,6 +231,26 @@ export default function BreakingNewsForm({ mode, initialValues, canPublish, id }
               onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
               onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
               required
+            />
+          </Field>
+        </div>
+
+        <div className="md:col-span-2">
+          <Field label={canPublish ? 'ملاحظات المراجعة' : 'ملاحظات المراجع'}>
+            <textarea
+              id="review_notes"
+              value={values.review_notes}
+              onChange={(e) => setField('review_notes', e.target.value)}
+              className={`${inputCls} min-h-28 py-3`}
+              style={inputStyle}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--md-primary)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--md-outline)')}
+              placeholder={
+                canPublish
+                  ? 'أضف ملاحظات الاعتماد أو التعديلات المطلوبة.'
+                  : 'ستظهر هنا ملاحظات المراجع إن وُجدت.'
+              }
+              readOnly={!canPublish}
             />
           </Field>
         </div>
@@ -190,6 +274,18 @@ export default function BreakingNewsForm({ mode, initialValues, canPublish, id }
           {error}
         </p>
       )}
+
+      <div
+        className="rounded-[var(--md-shape-m)] px-4 py-3 md-body-small"
+        style={{
+          background: 'var(--md-surface-container-low)',
+          color: 'var(--md-on-surface-variant)',
+        }}
+      >
+        {canPublish
+          ? 'يمكنك اعتماد الخبر أو طلب تعديلات عليه أو نشره مباشرة.'
+          : 'يمكنك حفظ الخبر كمسودة أو إرساله للمراجعة. النشر والاعتماد متاحان للمراجع فقط.'}
+      </div>
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3 pt-2">

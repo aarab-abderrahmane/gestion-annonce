@@ -24,6 +24,8 @@ export default async function CreateBreakingNewsPage({
           slug: '',
           level,
           status: 'draft',
+          editorial_status: 'draft',
+          review_notes: '',
           expires_at: '',
         }}
       />

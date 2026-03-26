@@ -18,9 +18,10 @@ export default async function Page() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('breaking_news')
-    .select('id, title, slug, level, status, created_at, expires_at')
+    .select('id, title, slug, level, status, published_at, created_at, expires_at')
     .eq('status', 'published')
     .is('deleted_at', null)
+    .order('published_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
 
   const pageErrors = collectErrorMessages([error]);

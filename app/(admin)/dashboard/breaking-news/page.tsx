@@ -10,7 +10,7 @@ export default async function BreakingNewsPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('breaking_news')
-    .select('id, title, level, status, created_at, expires_at, deleted_at')
+    .select('id, title, level, status, editorial_status, created_at, published_at, reviewed_at, expires_at, deleted_at')
     .order('created_at', { ascending: false });
 
   const pageErrors = collectErrorMessages([error]);

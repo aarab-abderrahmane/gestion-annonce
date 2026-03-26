@@ -70,10 +70,11 @@ async function fallbackSearch(supabase: SupabaseClient, filters: Required<Search
   const [{ data: newsRows }, { data: announcementRows }, { data: eventRows }] = await Promise.all([
     supabase
       .from('breaking_news')
-      .select('id, slug, title, level, created_at, expires_at, status')
+      .select('id, slug, title, level, published_at, created_at, expires_at, status')
       .eq('status', 'published')
       .is('deleted_at', null)
       .gt('expires_at', nowIso)
+      .order('published_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false }),
     supabase
       .from('announcements')

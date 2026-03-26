@@ -3,11 +3,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Settings, Trash2, Users, X } from 'lucide-react';
+import { AlertTriangle, BellRing, Building2, CalendarDays, FolderTree, House, Images, Newspaper, Settings, Trash2, Users, Workflow, X } from 'lucide-react';
 import type { AdminNavIconKey, AdminNavItem } from '@/lib/admin-permissions';
 
 const iconMap: Record<AdminNavIconKey, typeof House> = {
   house: House,
+  workflow: Workflow,
   bell: BellRing,
   alert: AlertTriangle,
   images: Images,

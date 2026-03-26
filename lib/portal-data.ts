@@ -37,6 +37,7 @@ type NewsRow = {
   slug: string;
   title: string;
   level?: string | null;
+  published_at?: string | null;
   created_at: string;
   expires_at: string;
 };
@@ -114,7 +115,7 @@ export const normalizeNews = (row: NewsRow): NewsAlert => ({
   title: row.title,
   description: row.title,
   riskLevel: row.level ? levelMap[row.level] ?? 'medium' : 'medium',
-  publishDate: row.created_at,
+  publishDate: row.published_at || row.created_at,
   expiryDate: row.expires_at,
 });
 

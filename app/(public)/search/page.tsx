@@ -267,9 +267,10 @@ export default async function Page({
   ] = await Promise.all([
     supabase
       .from("breaking_news")
-      .select("id, title, slug, level, status, created_at, expires_at")
+      .select("id, title, slug, level, status, published_at, created_at, expires_at")
       .eq("status", "published")
       .is("deleted_at", null)
+      .order("published_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false }),
     supabase
       .from("announcements")

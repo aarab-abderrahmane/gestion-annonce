@@ -32,6 +32,59 @@ values
   )
 on conflict (slug) do nothing;
 
+insert into public.breaking_news (title, slug, level, status, expires_at)
+values
+  (
+    'تحويل الدراسة الحضورية إلى نمط هجين لمدة يومين',
+    'hybrid-classes-two-days',
+    'dangerous',
+    'published',
+    now() + interval '3 days'
+  ),
+  (
+    'فتح باب طلبات الاستفادة من المساعدة الاجتماعية',
+    'social-aid-requests-open',
+    'urgent',
+    'published',
+    now() + interval '8 days'
+  ),
+  (
+    'تأجيل انطلاق التكوين المسائي إلى الساعة الخامسة',
+    'evening-training-delayed-five-pm',
+    'warning',
+    'published',
+    now() + interval '4 days'
+  ),
+  (
+    'إشعار بخصوص صيانة شبكة الأنترنت داخل المؤسسة',
+    'campus-network-maintenance-notice',
+    'warning',
+    'published',
+    now() + interval '6 days'
+  ),
+  (
+    'إلزامية إحضار بطاقة المتدرب خلال فترة الامتحانات',
+    'student-card-required-exams',
+    'urgent',
+    'published',
+    now() + interval '9 days'
+  ),
+  (
+    'تعليق الولوج إلى المختبر 3 خلال أشغال التهيئة',
+    'lab-3-closed-renovation',
+    'dangerous',
+    'published',
+    now() + interval '7 days'
+  ),
+  (
+    'تغيير استثنائي في نقطة تجمع النقل المدرسي',
+    'transport-meeting-point-change',
+    'warning',
+    'published',
+    now() + interval '5 days'
+  )
+on conflict (slug) do nothing;
+
 -- --------------------------------------------
 -- 2. CATEGORIES
 -- --------------------------------------------
@@ -43,11 +96,33 @@ values
   ('أنشطة المؤسسة', 'institution-activities')
 on conflict (slug) do nothing;
 
+insert into public.announcement_categories (name, slug)
+values
+  ('الجدولة والامتحانات', 'schedules-and-exams'),
+  ('المنح والدعم', 'grants-and-support'),
+  ('المنصات الرقمية', 'digital-platforms'),
+  ('شؤون المتدربين', 'student-affairs'),
+  ('الموارد البيداغوجية', 'pedagogical-resources'),
+  ('الإدماج والتدريب', 'internships-and-placement'),
+  ('إشعارات داخلية', 'internal-notices')
+on conflict (slug) do nothing;
+
 insert into public.event_categories (name, slug)
 values
   ('ورشات', 'workshops'),
   ('ندوات', 'seminars'),
   ('أنشطة طلابية', 'student-activities')
+on conflict (slug) do nothing;
+
+insert into public.event_categories (name, slug)
+values
+  ('أيام مفتوحة', 'open-days'),
+  ('لقاءات مهنية', 'career-meetings'),
+  ('تظاهرات رقمية', 'digital-events'),
+  ('مسابقات', 'competitions'),
+  ('معارض', 'exhibitions'),
+  ('تأطير ومواكبة', 'mentoring'),
+  ('جلسات تعريفية', 'orientation-sessions')
 on conflict (slug) do nothing;
 
 -- --------------------------------------------
@@ -145,6 +220,178 @@ from public.announcements a
 where a.slug = 'final-practical-exam-schedule'
 on conflict do nothing;
 
+insert into public.announcements (
+  title,
+  slug,
+  description,
+  division_id,
+  group_id,
+  status,
+  published_at,
+  expires_at
+)
+select
+  seed.title,
+  seed.slug,
+  seed.description,
+  d.id,
+  g.id,
+  'published',
+  now() - seed.published_offset::interval,
+  now() + seed.expires_offset::interval
+from (
+  values
+    (
+      'إعلان حول استعمال المنصة الرقمية الجديدة للغياب',
+      'absence-platform-launch',
+      'تعلن الإدارة عن اعتماد منصة رقمية جديدة لتتبع الغياب والتأخر. يرجى من جميع المتدربين تفعيل حساباتهم والاطلاع على دليل الاستعمال قبل نهاية الأسبوع.',
+      'dev-digital',
+      'dd101',
+      'digital-platforms',
+      '3 days',
+      '30 days'
+    ),
+    (
+      'برنامج حصص الدعم الخاصة بالاستعداد للامتحانات',
+      'exam-prep-support-sessions',
+      'ستنطلق حصص الدعم المكثف لفائدة المتدربين المقبلين على الامتحانات الإشهادية، وذلك وفق برمجة زمنية مسائية تمتد لأسبوعين.',
+      'gestion',
+      null,
+      'schedules-and-exams',
+      '4 days',
+      '12 days'
+    ),
+    (
+      'إعلان عن ورشة إعداد السيرة الذاتية والمقابلة المهنية',
+      'cv-and-interview-workshop-announcement',
+      'تنظم المؤسسة ورشة تكوينية حول إعداد السيرة الذاتية، تحسين الملف المهني، والاستعداد الجيد للمقابلات الفردية مع المشغلين.',
+      'infra-digitale',
+      null,
+      'internships-and-placement',
+      '6 days',
+      '18 days'
+    ),
+    (
+      'فتح باب التسجيل للاستفادة من فضاء المراجعة المسائي',
+      'evening-study-space-registration',
+      'تم تخصيص قاعات للمراجعة المسائية داخل المؤسسة خلال فترة الامتحانات، مع توفير تأطير إداري وتتبع للحضور بالنسبة للراغبين في الاستفادة.',
+      'dev-digital',
+      'dd101',
+      'student-affairs',
+      '2 days',
+      '14 days'
+    ),
+    (
+      'إعلان بخصوص تحيين ملفات المنحة والنقل',
+      'grant-and-transport-files-update',
+      'تدعو الإدارة المتدربين المعنيين إلى تحيين ملفات المنحة والنقل وإيداع الوثائق الناقصة داخل الآجال المحددة لتفادي رفض الطلبات.',
+      'gestion',
+      null,
+      'grants-and-support',
+      '5 days',
+      '16 days'
+    ),
+    (
+      'إشعار حول توزيع استعمال القاعات خلال الأسبوع المقبل',
+      'classroom-allocation-next-week',
+      'تم تحيين توزيع القاعات الزمنية لبعض الأفواج بسبب أشغال داخلية. المرجو مراجعة الجداول الجديدة قبل بداية الأسبوع المقبل.',
+      'infra-digitale',
+      null,
+      'internal-notices',
+      '1 day',
+      '10 days'
+    ),
+    (
+      'إطلاق سلسلة موارد بيداغوجية جديدة لفائدة المتدربين',
+      'new-learning-resources-series',
+      'أضيفت مجموعة جديدة من الموارد البيداغوجية الرقمية والملفات التطبيقية إلى فضاء المؤسسة الرقمي، مع تحديث الروابط الداخلية للوصول المباشر.',
+      'dev-digital',
+      'dd101',
+      'pedagogical-resources',
+      '7 days',
+      '40 days'
+    ),
+    (
+      'إعلان عن لقاء تواصلي مع أولياء المتدربين',
+      'parents-communication-meeting',
+      'تنظم المؤسسة لقاء تواصليا مع أولياء المتدربين لعرض مستجدات الموسم التكويني، مؤشرات الانضباط، وبرامج المواكبة والدعم.',
+      'gestion',
+      null,
+      'institution-activities',
+      '8 days',
+      '9 days'
+    )
+) as seed(
+  title,
+  slug,
+  description,
+  division_slug,
+  group_slug,
+  category_slug,
+  published_offset,
+  expires_offset
+)
+join public.divisions d on d.slug = seed.division_slug
+left join public.groups g on g.division_id = d.id and g.slug = seed.group_slug
+on conflict (slug) do nothing;
+
+insert into public.announcement_category_links (announcement_id, category_id)
+select a.id, c.id
+from (
+  values
+    ('absence-platform-launch', 'digital-platforms'),
+    ('exam-prep-support-sessions', 'schedules-and-exams'),
+    ('cv-and-interview-workshop-announcement', 'internships-and-placement'),
+    ('evening-study-space-registration', 'student-affairs'),
+    ('grant-and-transport-files-update', 'grants-and-support'),
+    ('classroom-allocation-next-week', 'internal-notices'),
+    ('new-learning-resources-series', 'pedagogical-resources'),
+    ('parents-communication-meeting', 'institution-activities')
+) as seed(slug, category_slug)
+join public.announcements a on a.slug = seed.slug
+join public.announcement_categories c on c.slug = seed.category_slug
+on conflict do nothing;
+
+insert into public.announcement_files (
+  announcement_id,
+  file_url,
+  file_name,
+  file_type
+)
+select
+  a.id,
+  seed.file_url,
+  seed.file_name,
+  seed.file_type
+from (
+  values
+    (
+      'absence-platform-launch',
+      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      'guide-absence-platform.pdf',
+      'pdf'
+    ),
+    (
+      'cv-and-interview-workshop-announcement',
+      'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1200&q=80',
+      'atelier-cv.jpg',
+      'image'
+    ),
+    (
+      'grant-and-transport-files-update',
+      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      'grant-checklist.pdf',
+      'pdf'
+    )
+) as seed(slug, file_url, file_name, file_type)
+join public.announcements a on a.slug = seed.slug
+where not exists (
+  select 1
+  from public.announcement_files af
+  where af.announcement_id = a.id
+    and af.file_name = seed.file_name
+);
+
 -- --------------------------------------------
 -- 4. EVENTS
 -- --------------------------------------------
@@ -241,6 +488,213 @@ cross join (
 ) as photos(photo_url)
 where e.slug = 'ui-design-workshop';
 
+insert into public.events (
+  title,
+  slug,
+  description,
+  cover_image,
+  location,
+  starts_at,
+  ends_at,
+  total_attendees,
+  status
+)
+select
+  seed.title,
+  seed.slug,
+  seed.description,
+  seed.cover_image,
+  seed.location,
+  now() + seed.starts_in::interval,
+  now() + seed.ends_in::interval,
+  seed.total_attendees,
+  'published'
+from (
+  values
+    (
+      'اليوم المفتوح للتوجيه والتخصصات',
+      'orientation-open-day',
+      'يوم مفتوح لفائدة المتدربين الجدد للتعرف على التخصصات المتاحة وآفاقها المهنية وبرامج المواكبة داخل المؤسسة.',
+      'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1600&q=80',
+      'البهو المركزي',
+      '4 days',
+      '4 days 5 hours',
+      220
+    ),
+    (
+      'مسابقة أفضل مشروع رقمي طلابي',
+      'best-student-digital-project-competition',
+      'مسابقة داخلية لعرض المشاريع الرقمية المنجزة من طرف المتدربين أمام لجنة تحكيم مكونة من مؤطرين ومهنيين.',
+      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80',
+      'قاعة العروض',
+      '10 days',
+      '10 days 6 hours',
+      140
+    ),
+    (
+      'لقاء مهني حول فرص الإدماج بعد التخرج',
+      'career-opportunities-meeting',
+      'لقاء تواصلي يجمع المتدربين مع مهنيين من سوق الشغل لعرض مسارات الإدماج، الانتظارات العملية، ومتطلبات التوظيف الأولى.',
+      'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1600&q=80',
+      'قاعة الاجتماعات',
+      '15 days',
+      '15 days 3 hours',
+      90
+    ),
+    (
+      'ورشة الأمن السيبراني للمبتدئين',
+      'cybersecurity-workshop-beginners',
+      'ورشة تطبيقية للتعرف على مبادئ الأمن السيبراني، حماية الحسابات، وأفضل الممارسات الأساسية للتعامل مع المخاطر الرقمية.',
+      'https://images.unsplash.com/photo-1510915228340-29c85a43dcfe?auto=format&fit=crop&w=1600&q=80',
+      'مختبر الشبكات',
+      '18 days',
+      '18 days 4 hours',
+      75
+    ),
+    (
+      'معرض المشاريع التطبيقية لنهاية الدورة',
+      'end-cycle-projects-exhibition',
+      'معرض داخلي لعرض المشاريع التطبيقية التي أنجزها المتدربون طيلة الدورة أمام الإدارة والمهنيين والشركاء.',
+      'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80',
+      'القاعة متعددة الاستعمالات',
+      '21 days',
+      '21 days 6 hours',
+      160
+    ),
+    (
+      'جلسة تعريفية بمنصة التدريب عن بعد',
+      'remote-learning-platform-session',
+      'جلسة تعريفية حول خصائص منصة التدريب عن بعد، طرق الولوج إلى الموارد، وآليات تسليم الأشغال الفردية والجماعية.',
+      'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1600&q=80',
+      'قاعة الإعلاميات 1',
+      '6 days',
+      '6 days 2 hours',
+      85
+    ),
+    (
+      'لقاء المواكبة النفسية والتحفيز الدراسي',
+      'student-motivation-support-session',
+      'لقاء تأطيري يركز على تدبير الضغط الدراسي، تطوير الدافعية، وتحسين التوازن بين التكوين والحياة اليومية للمتدرب.',
+      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1600&q=80',
+      'فضاء الأنشطة',
+      '9 days',
+      '9 days 2 hours',
+      70
+    ),
+    (
+      'ندوة التحول الرقمي في الخدمات العمومية',
+      'digital-transformation-public-services',
+      'ندوة علمية تناقش أثر التحول الرقمي على الخدمات العمومية، أدوار التكوين المهني، ومجالات التطوير المرتبطة بالمرفق العام.',
+      'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1600&q=80',
+      'المدرج الرئيسي',
+      '25 days',
+      '25 days 4 hours',
+      200
+    )
+) as seed(
+  title,
+  slug,
+  description,
+  cover_image,
+  location,
+  starts_in,
+  ends_in,
+  total_attendees
+)
+on conflict (slug) do nothing;
+
+insert into public.event_category_links (event_id, category_id)
+select e.id, c.id
+from (
+  values
+    ('orientation-open-day', 'open-days'),
+    ('best-student-digital-project-competition', 'competitions'),
+    ('career-opportunities-meeting', 'career-meetings'),
+    ('cybersecurity-workshop-beginners', 'workshops'),
+    ('end-cycle-projects-exhibition', 'exhibitions'),
+    ('remote-learning-platform-session', 'orientation-sessions'),
+    ('student-motivation-support-session', 'mentoring'),
+    ('digital-transformation-public-services', 'seminars')
+) as seed(slug, category_slug)
+join public.events e on e.slug = seed.slug
+join public.event_categories c on c.slug = seed.category_slug
+on conflict do nothing;
+
+insert into public.event_people (event_id, name, role, type)
+select e.id, seed.person_name, seed.person_role, seed.person_type
+from (
+  values
+    ('orientation-open-day', 'أسماء حجي', 'منسقة اليوم المفتوح', 'organizer'),
+    ('orientation-open-day', 'عبد الصمد أوطالب', 'مؤطر التوجيه', 'participant'),
+    ('best-student-digital-project-competition', 'منى الإدريسي', 'رئيسة لجنة التحكيم', 'organizer'),
+    ('best-student-digital-project-competition', 'يوسف بنصالح', 'عضو لجنة التحكيم', 'participant'),
+    ('career-opportunities-meeting', 'فاطمة الزهراء العلمي', 'مكلفة بالشراكات', 'organizer'),
+    ('career-opportunities-meeting', 'حمزة أيت موسى', 'ممثل مهني', 'participant'),
+    ('cybersecurity-workshop-beginners', 'سعيد الراشدي', 'منشط الورشة', 'organizer'),
+    ('cybersecurity-workshop-beginners', 'مريم باها', 'مؤطرة الأمن المعلوماتي', 'participant'),
+    ('end-cycle-projects-exhibition', 'سمير بوعزة', 'منسق المعرض', 'organizer'),
+    ('remote-learning-platform-session', 'نادية الخياري', 'مؤطرة المنصة', 'organizer'),
+    ('student-motivation-support-session', 'حسن التومي', 'مؤطر المواكبة', 'organizer'),
+    ('digital-transformation-public-services', 'ليلى السوسي', 'محاضرة رئيسية', 'participant')
+) as seed(slug, person_name, person_role, person_type)
+join public.events e on e.slug = seed.slug
+where not exists (
+  select 1
+  from public.event_people ep
+  where ep.event_id = e.id
+    and ep.name = seed.person_name
+    and ep.role = seed.person_role
+);
+
+insert into public.event_photos (event_id, photo_url)
+select e.id, seed.photo_url
+from (
+  values
+    ('orientation-open-day', 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1400&q=80'),
+    ('best-student-digital-project-competition', 'https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?auto=format&fit=crop&w=1400&q=80'),
+    ('career-opportunities-meeting', 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=1400&q=80'),
+    ('cybersecurity-workshop-beginners', 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=1400&q=80'),
+    ('end-cycle-projects-exhibition', 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1400&q=80'),
+    ('remote-learning-platform-session', 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1400&q=80'),
+    ('student-motivation-support-session', 'https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1400&q=80'),
+    ('digital-transformation-public-services', 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80')
+) as seed(slug, photo_url)
+join public.events e on e.slug = seed.slug
+where not exists (
+  select 1
+  from public.event_photos ep
+  where ep.event_id = e.id
+    and ep.photo_url = seed.photo_url
+);
+
+-- --------------------------------------------
+-- 5. DANGER NEWS
+-- --------------------------------------------
+
+insert into public.danger_news (title, status, expires_at)
+select
+  seed.title,
+  'published',
+  now() + seed.expires_in::interval
+from (
+  values
+    ('تحديث استثنائي بخصوص ولوج البوابة الرئيسية صباحاً', '2 days'),
+    ('التنقل داخل الورشات يخضع لمسار مؤقت بسبب أشغال الصيانة', '5 days'),
+    ('إشعار بخصوص الانقطاع المؤقت للماء بالجهة الخلفية للمؤسسة', '1 day'),
+    ('منع الوقوف بجانب مخارج الطوارئ طيلة هذا الأسبوع', '7 days'),
+    ('التأكد من حمل الشارات التنظيمية خلال الفعاليات الكبرى', '6 days'),
+    ('إغلاق مؤقت للمستودع التقني أمام المتدربين غير المعنيين', '8 days'),
+    ('المرجو احترام الإشارات الجديدة داخل فضاء المختبرات', '10 days'),
+    ('تم تغيير مسار الولوج إلى الإدارة بسبب التهيئة الداخلية', '3 days'),
+    ('فتح استثنائي للبوابة الجانبية عند نهاية الحصص المسائية', '4 days'),
+    ('إشعار تنظيمي حول توزيع الحراسة داخل الساحة الرئيسية', '9 days')
+) as seed(title, expires_in)
+where not exists (
+  select 1
+  from public.danger_news dn
+  where dn.title = seed.title
+);
+
 
 
 
@@ -255,7 +709,7 @@ where e.slug = 'ui-design-workshop';
     select *                                                                                                                           
     from (                                                                                                                             
       values                                                                                                                           
-        ('admin@example.com', 'Admin123!', 'Main Admin', true),                                                                        
+        ('abderrahmane@admin.com', 'Admin123!', 'Main Admin', true),                                                                        
         ('staff1@example.com', 'Staff123!', 'Staff One', false),                                                                       
         ('staff2@example.com', 'Staff123!', 'Staff Two', false),                                                                       
         ('staff3@example.com', 'Staff123!', 'Staff Three', false),                                                                     
@@ -311,7 +765,7 @@ where e.slug = 'ui-design-workshop';
     select id, email, raw_app_meta_data                                                                                                
     from auth.users                                                                                                                    
     where email in (                                                                                                                   
-      'admin@example.com',                                                                                                             
+      'abderrahmane@admin.com',                                                                                                             
       'staff1@example.com',                                                                                                            
       'staff2@example.com',                                                                                                            
       'staff3@example.com',                                                                                                            
@@ -352,7 +806,7 @@ where e.slug = 'ui-design-workshop';
   with admin_user as (                                                                                                                 
     select id                                                                                                                          
     from auth.users                                                                                                                    
-    where email = 'admin@example.com'                                                                                                  
+    where email = 'abderrahmane@admin.com'                                                                                                  
     limit 1                                                                                                                            
   ),                                                                                                                                   
   staff_users as (                                                                                                                     

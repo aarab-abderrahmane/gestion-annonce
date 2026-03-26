@@ -6,6 +6,10 @@ import { useMemo, useState } from 'react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/ToastProvider';
 import type { ResourcePermissionState } from '@/lib/admin-permissions';
+import {
+  BREAKING_NEWS_EDITORIAL_STATUS_LABELS,
+  type BreakingNewsEditorialStatus,
+} from '@/lib/breaking-news-workflow';
 
 const levelLabels: Record<string, string> = {
   dangerous: 'خطير',
@@ -24,7 +28,10 @@ type Row = {
   title: string;
   level: string;
   status: string;
+  editorial_status: BreakingNewsEditorialStatus;
   created_at: string;
+  published_at?: string | null;
+  reviewed_at?: string | null;
   expires_at: string;
   deleted_at?: string | null;
 };
@@ -178,7 +185,7 @@ export default function BreakingNewsTable({
           <table className="min-w-full" style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--md-surface-container)' }}>
-                {['العنوان', 'المستوى', 'الحالة', 'تاريخ الإنشاء', 'تاريخ الانتهاء', 'الإجراءات'].map((h) => (
+                {['العنوان', 'المستوى', 'التحرير', 'الحالة', 'الإنشاء/النشر', 'تاريخ الانتهاء', 'الإجراءات'].map((h) => (
                   <th key={h} className="md-label-medium px-6 py-3 text-right" style={{ color: 'var(--md-on-surface-variant)' }}>
                     {h}
                   </th>
@@ -214,6 +221,31 @@ export default function BreakingNewsTable({
                       <span
                         className="md-label-small rounded-[var(--md-shape-full)] px-3 py-1"
                         style={{
+                          background:
+                            row.editorial_status === 'changes_requested'
+                              ? 'var(--md-error-container)'
+                              : row.editorial_status === 'approved'
+                                ? 'var(--md-tertiary-container)'
+                                : row.editorial_status === 'in_review'
+                                  ? 'var(--md-secondary-container)'
+                                  : 'var(--md-surface-container-highest)',
+                          color:
+                            row.editorial_status === 'changes_requested'
+                              ? 'var(--md-on-error-container)'
+                              : row.editorial_status === 'approved'
+                                ? 'var(--md-on-tertiary-container)'
+                                : row.editorial_status === 'in_review'
+                                  ? 'var(--md-on-secondary-container)'
+                                  : 'var(--md-on-surface-variant)',
+                        }}
+                      >
+                        {BREAKING_NEWS_EDITORIAL_STATUS_LABELS[row.editorial_status]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className="md-label-small rounded-[var(--md-shape-full)] px-3 py-1"
+                        style={{
                           background: isPublished ? 'var(--md-primary-container)' : 'var(--md-surface-container-highest)',
                           color: isPublished ? 'var(--md-on-primary-container)' : 'var(--md-on-surface-variant)',
                         }}
@@ -222,7 +254,12 @@ export default function BreakingNewsTable({
                       </span>
                     </td>
                     <td className="md-body-small px-6 py-4" style={{ color: 'var(--md-on-surface-variant)' }}>
-                      {new Date(row.created_at).toLocaleString('ar-MA')}
+                      <div className="space-y-1">
+                        <div>إنشاء: {new Date(row.created_at).toLocaleString('ar-MA')}</div>
+                        <div>
+                          نشر: {row.published_at ? new Date(row.published_at).toLocaleString('ar-MA') : '—'}
+                        </div>
+                      </div>
                     </td>
                     <td className="md-body-small px-6 py-4" style={{ color: 'var(--md-on-surface-variant)' }}>
                       {new Date(row.expires_at).toLocaleString('ar-MA')}

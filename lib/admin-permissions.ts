@@ -44,6 +44,7 @@ export type DashboardPermissionRow = {
 
 export type AdminNavIconKey =
   | 'house'
+  | 'workflow'
   | 'bell'
   | 'alert'
   | 'images'
@@ -93,6 +94,7 @@ export const ADMIN_RESOURCE_DESCRIPTIONS: Record<AdminResource, string> = {
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: 'house', fullAdminOnly: true },
+  { href: '/dashboard/workflow', label: 'سير التحرير', icon: 'workflow', fullAdminOnly: true },
   { href: '/dashboard/breaking-news', label: 'أخبار عاجلة', icon: 'bell', resource: 'breaking_news' },
   { href: '/dashboard/danger-news', label: 'الشريط الخطير', icon: 'alert', resource: 'danger_news' },
   { href: '/dashboard/home-carousel', label: 'كاروسيل الرئيسية', icon: 'images', resource: 'home_carousel' },

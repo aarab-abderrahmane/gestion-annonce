@@ -3,6 +3,7 @@ import {
   ADMIN_ACCOUNT_STATUS_VALUES,
   ADMIN_RESOURCE_VALUES,
 } from '@/lib/admin-permissions';
+import { BREAKING_NEWS_EDITORIAL_STATUS_VALUES } from '@/lib/breaking-news-workflow';
 import { DANGER_NEWS_ICON_VALUES } from '@/lib/danger-news';
 
 const contentStatusSchema = z.enum(['draft', 'published']);
@@ -20,10 +21,25 @@ const optionalDateString = z
 
 export const breakingNewsSchema = z.object({
   title: nonEmptyString.max(200, 'العنوان طويل جداً.'),
-  slug: z.string().trim().optional().or(z.literal('')),
+  slug: nonEmptyString.max(220, 'الرابط المختصر طويل جداً.'),
   level: z.enum(['dangerous', 'urgent', 'warning']),
   status: contentStatusSchema,
+  editorial_status: z.enum(BREAKING_NEWS_EDITORIAL_STATUS_VALUES).default('draft'),
+  review_notes: z
+    .string()
+    .trim()
+    .max(1000, 'ملاحظات المراجعة طويلة جداً.')
+    .optional()
+    .or(z.literal('')),
   expires_at: nonEmptyString.refine((value) => !Number.isNaN(Date.parse(value)), 'تاريخ الانتهاء غير صالح.'),
+}).superRefine((value, ctx) => {
+  if (value.status === 'published' && value.editorial_status !== 'approved') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'يجب اعتماد الخبر قبل نشره.',
+      path: ['editorial_status'],
+    });
+  }
 });
 
 export const dangerNewsSchema = z.object({
